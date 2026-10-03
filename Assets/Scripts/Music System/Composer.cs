@@ -196,8 +196,6 @@ public class Composer : MonoBehaviour
     {
         yield return new WaitForFixedUpdate();
 
-        print("Test");
-
         // Tutorial
         if (GameManager.tutorial)
         {
