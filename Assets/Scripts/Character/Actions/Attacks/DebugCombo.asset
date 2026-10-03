@@ -1,0 +1,59 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ba2c559d3d4e564880be0627e1daff1, type: 3}
+  m_Name: DebugCombo
+  m_EditorClassIdentifier: Assembly-CSharp::AttackType
+  _hits:
+  - <Damage>k__BackingField: 10
+    <Duration>k__BackingField: 0.5
+    <HitboxTiming>k__BackingField: 0.8
+    <HitboxDuration>k__BackingField: 0.2
+    <DashDistance>k__BackingField: 0.5
+    <DashDuration>k__BackingField: 0.2
+    <DashTiming>k__BackingField: 1
+    dashStart: 0.17142858
+    hitboxStart: 0
+    hitboxEnd: 0.04285714
+    attackEnd: -0.12857142
+  - <Damage>k__BackingField: 10
+    <Duration>k__BackingField: 1
+    <HitboxTiming>k__BackingField: 0.8
+    <HitboxDuration>k__BackingField: 0.5
+    <DashDistance>k__BackingField: 1
+    <DashDuration>k__BackingField: 0.3
+    <DashTiming>k__BackingField: 1
+    dashStart: 0.34285715
+    hitboxStart: 0
+    hitboxEnd: 0.08571428
+    attackEnd: -0.21428572
+  - <Damage>k__BackingField: 10
+    <Duration>k__BackingField: 0.5
+    <HitboxTiming>k__BackingField: 0.8
+    <HitboxDuration>k__BackingField: 0.2
+    <DashDistance>k__BackingField: 0.5
+    <DashDuration>k__BackingField: 0.8
+    <DashTiming>k__BackingField: 0.507
+    dashStart: 0.08691429
+    hitboxStart: 0.08451428
+    hitboxEnd: 0.04285714
+    attackEnd: -0.12857142
+  - <Damage>k__BackingField: 10
+    <Duration>k__BackingField: 1.5
+    <HitboxTiming>k__BackingField: 0.2
+    <HitboxDuration>k__BackingField: 0.73
+    <DashDistance>k__BackingField: 0.5
+    <DashDuration>k__BackingField: 1
+    <DashTiming>k__BackingField: 0.103
+    dashStart: 0.0132428575
+    hitboxStart: 0.11532857
+    hitboxEnd: 0.31285715
+    attackEnd: -0.12857144

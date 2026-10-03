@@ -1,0 +1,54 @@
+using AudioData;
+using UnityEngine;
+
+#ROOTNAMESPACEBEGIN#
+public class #SCRIPTNAME# : MonoBehaviour
+{
+    #region Estruturas
+    /* - - - - -
+     * 
+     * - - - - - */
+    #endregion
+
+    #region Variáveis
+    // VARIÁVEIS VISÍVEIS
+
+    // VARIÁVEIS OCULTAS
+        // Referências
+    #endregion
+
+    #region Funções Unity
+    /* - - - - -
+     * 
+     * - - - - - */
+    private void Start()
+    {
+        
+    }
+
+    /* - - - - -
+     * 
+     * - - - - - */
+    private void Update()
+    {
+        
+    }
+    #endregion
+
+    #region Main
+   
+    #endregion
+
+    #region Timing
+    public void TickListener(TickInfo i_info)
+    {
+        
+    }
+
+    public void StartListener(TickInfo i_info)
+    {
+        
+    }
+    #endregion
+}
+#ROOTNAMESPACEEND#
