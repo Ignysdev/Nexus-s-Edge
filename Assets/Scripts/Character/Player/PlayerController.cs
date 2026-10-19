@@ -80,6 +80,9 @@ public class PlayerController : Controller
     private float _lerpRotationSpeed = 15f;
         [SerializeField]
     private LayerMask _enemyLayer;
+    [Space]
+        [SerializeField, Tooltip("Travar o mouse na tela ao iniciar")]
+    private bool _lockCursor = true;
 
     [Header("Timing")]
         [SerializeField]
@@ -152,6 +155,13 @@ public class PlayerController : Controller
         _dash = GetComponent<Dash>();
         _playerTargeting = GetComponent<PlayerTargeting>();
         _attack = GetComponent<Attack>();
+
+        // Cursor
+        if (_lockCursor)
+        {
+            Cursor.lockState = CursorLockMode.Locked;
+            Cursor.visible = false;
+        }
     }
 
     /* - - - - -
