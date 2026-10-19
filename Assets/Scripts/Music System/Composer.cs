@@ -487,7 +487,7 @@ public class Composer : MonoBehaviour
         {
             float i_intensityTarget = 0f;
 
-            if (PlayerStatus.playerHealth > 70 && GameManager.combo >= 5)
+            if (PlayerStatus.playerHealth > 60 && GameManager.combo >= 5)
             {
                 switch (GameManager.combo)
                 {
