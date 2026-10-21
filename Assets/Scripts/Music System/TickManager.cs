@@ -2,7 +2,9 @@ using AudioData;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 public class TickManager : MonoBehaviour
@@ -56,7 +58,7 @@ public class TickManager : MonoBehaviour
     void Start()
     {
         if (!tickCaller)
-            tickCaller = AssetDatabase.LoadAssetAtPath<TickCaller>("Assets/Scripts/Music System/TickEvents/Tick.asset");
+            tickCaller = Resources.Load<TickCaller>("Tick");
 
         SetGuideAudio(_startingGuideClipIndex);
 

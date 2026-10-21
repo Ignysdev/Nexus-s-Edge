@@ -2,7 +2,9 @@ using AudioData;
 using DG.Tweening;
 using System.Collections;
 using Unity.VisualScripting;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 using UnityEngine.UIElements;
 using UnityEngine.UIElements.Experimental;

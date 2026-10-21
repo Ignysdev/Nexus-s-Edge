@@ -1,5 +1,7 @@
 using AudioData;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 public class TickListener : MonoBehaviour
@@ -44,7 +46,7 @@ public class TickListener : MonoBehaviour
     private void SetScriptableObject()
     {
         if (!tickCaller)
-            tickCaller = AssetDatabase.LoadAssetAtPath<TickCaller>("Assets/Scripts/Music System/TickEvents/Tick.asset");
+            tickCaller = Resources.Load<TickCaller>("Tick");
     }
     
     /* - - - - -
