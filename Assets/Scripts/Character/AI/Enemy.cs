@@ -1,7 +1,9 @@
 using AudioData;
 using System.Collections;
 using Unity.VisualScripting;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 
 [RequireComponent(typeof(EnemyMovement))]
@@ -45,13 +47,17 @@ public class Enemy : Controller
     public bool readyForAttack = true;
 
     private int _attackFullBeat;
+
+        // Pool
+    private WaveManager _waveManager;
+    private bool _returningToPool = false;
     #endregion
 
     #region Funções Unity
     /* - - - - -
-     * 
+     * Coleta referências
      * - - - - - */
-    private void Start()
+    private void Awake()
     {
         _dash = GetComponent<Dash>();
         attack = GetComponent<Attack>();
@@ -80,6 +86,47 @@ public class Enemy : Controller
     public void Startup(EnemyManager i_enemyManager)
     {
         _enemyManager = i_enemyManager;
+    }
+
+    /* - - - - -
+     * Devolve o inimigo ao pool depois do delay.
+     * - - - - - */
+    private IEnumerator ReturnToPool(float i_delay)
+    {
+        yield return new WaitForSeconds(i_delay);
+
+        gameObject.SetActive(false);
+
+        if (_waveManager != null)
+            _waveManager.ReturnToPool(this);
+    }
+
+    /* - - - - -
+     * Reseta os status do inimigo.
+     * - - - - - */
+    public void ResetFromPool()
+    {
+        if (attack.currentAttack != null)
+            attack.InterruptAttack();
+
+        currentAction = Action.Idle;
+        readyForAttack = true;
+        _attackIndex = 0;
+        _attackFullBeat = 0;
+
+        _returningToPool = false;
+
+        GetComponent<Status>().Reset();
+
+        _enemyMovement.ResetMovement();
+    }
+
+    /* - - - - -
+     * Guarda a referência do WaveManager.
+     * - - - - - */
+    public void SetWaveManager(WaveManager i_waveManager)
+    {
+        _waveManager = i_waveManager;
     }
 
     public bool ReadyAttack(int i_beat, int i_attackIndex = 0, bool i_walkToPlayer = false)
@@ -120,7 +167,6 @@ public class Enemy : Controller
         }
         else
         {
-            Debug.LogError("AAAAAAAAAA");
             return false;
         }
     }
@@ -172,7 +218,7 @@ public class Enemy : Controller
                 if (attack.currentAttack != null && !attack._currentHit.Heavy)
                     attack.InterruptAttack();
 
-                StartCoroutine(Stun((float)(_stunDuration * TickManager.tickInfo.tickDuration)));
+                StartCoroutine(Stun(_stunDuration));
 
                 break;
             case Action.StrongAttack:
@@ -195,10 +241,14 @@ public class Enemy : Controller
      * - - - - - */
     public override void Die()
     {
+        if (_returningToPool)
+            return;
+
+        _returningToPool = true;
+
         _enemyManager.RemoveActiveEnemy(this, target);
 
-        // TEMP
-        Destroy(gameObject, 0.5f);
+        StartCoroutine(ReturnToPool(0.5f));
     }
 
     /* - - - - -

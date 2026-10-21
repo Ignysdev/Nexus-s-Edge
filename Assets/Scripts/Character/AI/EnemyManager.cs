@@ -1,10 +1,11 @@
 using AudioData;
-using NUnit.Framework;
+#if UNITY_EDITOR
+using UnityEditor;
+#endif
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using static EnemyManager;
 
 public class EnemyManager : MonoBehaviour
 {
@@ -38,6 +39,43 @@ public class EnemyManager : MonoBehaviour
         public int moveStep;
         public int attackStep;
     }
+
+    [Serializable]
+    public struct TypeWeight
+    {
+            [Tooltip("Tipo do Inimigo")]
+        public EnemyTypes type;
+            [UnityEngine.Range(0f, 1f), Tooltip("Peso mínimo")]
+        public float weightStart;
+            [UnityEngine.Range(0f, 1f), Tooltip("Peso máximo")]
+        public float weightMax;
+    }
+
+    /* - - - - -
+     * Escalonamento de agressividade por estagio da musica.
+     * - - - - - */
+    [Serializable]
+    public struct StageBonus
+    {
+        public MusicStage stage;
+            [Tooltip("Beats ate chegar no max dentro desse estagio (0 = ja comeca no max)")]
+        public int escalationDurationBeats;
+            [Space]
+            [UnityEngine.Range(0f, 1f), Tooltip("Agressividade de ataque no comeco do estagio")]
+        public float attackAggressivinessStart;
+            [UnityEngine.Range(0f, 1f), Tooltip("Agressividade de ataque maxima do estagio")]
+        public float attackAggressivinessMax;
+            [UnityEngine.Range(0f, 1f), Tooltip("Agressividade de ataque maxima do estagio")]
+        public float attackAggressivinessIncrease;
+            [Space]
+            [UnityEngine.Range(0f, 1f), Tooltip("Agressividade de spawn no comeco do estagio")]
+        public float spawnAggressivinessStart;
+            [UnityEngine.Range(0f, 1f), Tooltip("Agressividade de spawn maxima do estagio")]
+        public float spawnAggressivinessMax;
+        [Space]
+        [Tooltip("Prioridade de inimigos por tipo")]
+        public TypeWeight[] typeWeights;
+    }
     #endregion
 
     #region Variáveis
@@ -45,11 +83,6 @@ public class EnemyManager : MonoBehaviour
     [Header("Cálculos ataques")]
         [SerializeField, Min(4), Tooltip("Quantos beats a frente o manager vai planejar os ataques")]
     private int _thinkAheadTime = 8;
-        [Space]
-        [SerializeField, UnityEngine.Range(0f, 1f), Tooltip("O quão provável é que um beat seja escolhido para ter um ataque")]
-    private float _aggressiveness = 0.35f;
-        [SerializeField, UnityEngine.Range(0f, 1f), Tooltip("Quanto a probabilidade de um ataque acontecer aumenta quando um ataque não ocorre")]
-    private float _aggressivenessIncrease = 0.15f;
         [Space]
         [SerializeField, Min(1), Tooltip("Ataques máximos em um único beat")]
     private int _maxAttacksPerBeat = 1;
@@ -63,10 +96,26 @@ public class EnemyManager : MonoBehaviour
         //[Space]
         [SerializeField]
     private SerializableDictionary<int, List<EnemySchedule>> _ManualScheduleCycle1 = new SerializableDictionary<int, List<EnemySchedule>>();
+
+    [Space(15)]
+    [Header("Escalonamento por Estagio")]
+        [SerializeField, Tooltip("Escalonamento de agressividade por estagio da musica")]
+    private StageBonus[] _stageBonus = new StageBonus[]
+    {
+        new() { stage = MusicStage.Climax},
+        new() { stage = MusicStage.Passage},
+        new() { stage = MusicStage.Fail},
+        new() { stage = MusicStage.Variant},
+        new() { stage = MusicStage.Anticipation},
+        new() { stage = MusicStage.Final_Anticipation},
+        new() { stage = MusicStage.Failed_Anticipation},
+        new() { stage = MusicStage.Other}
+    };
     // VARIÁVEIS OCULTAS
     // Referências
         [HideInInspector]
     public PlayerTargeting playerTargeting;
+    private WaveManager _waveManager;
 
     // Públicas
     //    [HideInInspector]
@@ -74,6 +123,7 @@ public class EnemyManager : MonoBehaviour
 
         [HideInInspector]
     public List<Enemy> activeEnemies { get; private set; } = new List<Enemy>();
+
         // Lista Inimigos
         [HideInInspector]
     private List<Enemy> enemies = new List<Enemy>();
@@ -88,6 +138,27 @@ public class EnemyManager : MonoBehaviour
         // Cálculo
     private float _attackOdd = 0f;
     private int _stepsNoAttack = 0;
+
+        // Spawn para ataque
+    private EnemyTypes _pendingEnemyType = EnemyTypes.Any;
+    private AttackType _pendingAttackType = null;
+    private bool _pendingForce = false;
+
+        [UnityEngine.Range(0f, 1f), Tooltip("O quão provável é que um beat seja escolhido para ter um ataque")]
+    private float _attackAggressiviness = 0.1f;
+        [UnityEngine.Range(0f, 1f), Tooltip("Quanto a probabilidade de um ataque acontecer aumenta quando um ataque não ocorre")]
+    private float _aggressivenessIncrease = 0.05f;
+
+
+        // Escalonamento
+        [HideInInspector]
+    public float _spawnAggressiviness = 0f;
+
+    private MusicStage _lastStage = MusicStage.Other;
+    private int _stageBeats = 0;
+
+    private readonly Dictionary<EnemyTypes, float> _typeWeights = new Dictionary<EnemyTypes, float>();
+
     #endregion
 
     #region Funções Unity
@@ -105,7 +176,10 @@ public class EnemyManager : MonoBehaviour
         }
 
             // Preparo Cálculo
-        _attackOdd = _aggressiveness;
+        _attackOdd = _attackAggressiviness;
+
+            // Pool de spawn (mesmo objeto)
+        _waveManager = GetComponent<WaveManager>();
     }
 
     /* - - - - -
@@ -132,14 +206,14 @@ public class EnemyManager : MonoBehaviour
         AttackType i_attackType = null,
         bool i_force = false)
     {
-        if (!automaticAttackManagement)
+        if(i_beatFull == -1)
+            i_beatFull = TickManager.tickInfo.beatFullCount + 1f + _thinkAheadTime;
+
+        if (!automaticAttackManagement && !i_force)
         {
             //Debug.LogWarning("Cancelled because of automatic.");
             return;
         }
-
-        if (i_beatFull == -1)
-            i_beatFull = TickManager.tickInfo.beatFullCount;
 
         int i_step = Mathf.RoundToInt(i_beatFull * 2f);
 
@@ -175,7 +249,7 @@ public class EnemyManager : MonoBehaviour
                 i_attackType,
                 i_force) != null)
             {
-                _attackOdd = _aggressiveness;
+                _attackOdd = _attackAggressiviness;
                 _stepsNoAttack = 0;
 
                 //Debug.LogWarning("Attack Schedulled, but failed");
@@ -203,7 +277,12 @@ public class EnemyManager : MonoBehaviour
     {
         // Sem inimigos disponíveis
         if (activeEnemies.Count == 0)
+        {
+                // Spawna inimigo
+            RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+
             return null;
+        }
 
         if (_attackHitSchedule.TryGetValue(i_step, out List<EnemySchedule> i_AttackHitSchedule))
         {
@@ -233,8 +312,13 @@ public class EnemyManager : MonoBehaviour
             i_availableEnemies.Add(i_enemy);
         }
 
+        // Spawna inimigo se nenhum disponível
         if (i_availableEnemies.Count == 0)
+        {
+            RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+
             return null;
+        }
 
         // Escolhe um dos inimigos disponíveis
         Enemy i_selectedEnemy;
@@ -248,9 +332,13 @@ public class EnemyManager : MonoBehaviour
                     i_availableEnemies.RemoveAt(i);
             }
 
-            // Cancela se nenhum
+            // Spawna se nenhum
             if (i_availableEnemies.Count == 0)
+            {
+                RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+
                 return null;
+            }
         }
 
         i_selectedEnemy = i_availableEnemies[UnityEngine.Random.Range(0, i_availableEnemies.Count)];
@@ -286,9 +374,28 @@ public class EnemyManager : MonoBehaviour
 
         // Verificação Hits =-=-=-=-=-=
 
+        int i_moveStep;
+        int i_attackStep;
+
+        if (i_forceMoveStep == -1)
+        {
+                // Sem andar: ataca neste mesmo tick
+            i_moveStep = -1;
+            i_attackStep = i_step;
+        }
+        else
+        {
+            i_moveStep = i_forceMoveStep >= 2
+                ? i_forceMoveStep
+                : i_step;
+
+            i_attackStep = i_step +
+                (UnityEngine.Random.Range(2, _moveAheadTime + 1) * 2);
+        }
+
         for (int i = 0; i < i_hitTimings.Length; i++)
         {
-            int i_hitStep = i_step + Mathf.RoundToInt(i_hitTimings[i] * 2f);
+            int i_hitStep = i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
 
             // Se hits acima do limite
             if (_attackHitSchedule.TryGetValue(i_hitStep, out List<EnemySchedule> i_hitSchedule))
@@ -300,15 +407,9 @@ public class EnemyManager : MonoBehaviour
 
         // Registro HIT =-=-=-=-=-=
 
-        int i_moveStep;
-        if (i_forceMoveStep < 2)
-            i_moveStep = i_step - (UnityEngine.Random.Range(2, _moveAheadTime + 1) * 2);
-        else
-            i_moveStep = i_forceMoveStep;
-
         for (int i = 0; i < i_hitTimings.Length; i++)
         {
-            int i_hitStep = i_step + Mathf.RoundToInt(i_hitTimings[i] * 2f);
+            int i_hitStep = i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
 
             EnemySchedule i_schedule = new EnemySchedule
             {
@@ -318,7 +419,7 @@ public class EnemyManager : MonoBehaviour
                 attackIndex = i_attackIndex,
                 hitIndex = i,
 
-                attackStep = i_step,
+                attackStep = i_attackStep,
                 moveStep = i_moveStep
             };
 
@@ -338,21 +439,21 @@ public class EnemyManager : MonoBehaviour
             attackIndex = i_attackIndex,
             hitIndex = 0,
 
-            attackStep = i_step,
+            attackStep = i_attackStep,
             moveStep = i_moveStep
         };
 
         // Registro Começo ataque =-=-=-=-=-=
         EditDictionary(
             _enemyReadySchedule,
-            i_step,
+            i_attackStep,
             i_readySchedule,
             false
         );
-
+        
         // Registro Movimento =-=-=-=-=-=
 
-        if (i_forceMoveStep >= 0)
+        if (i_forceMoveStep != -1)
         {
             EditDictionary(
                 _enemyMoveSchedule,
@@ -365,6 +466,47 @@ public class EnemyManager : MonoBehaviour
         return i_readySchedule;
     }
 
+    /* - - - - -
+     * Requisita o spawn de um inimigo novo capaz de usar esse ataque.
+     * O agendamento é salvo para tentar agendar novamente no próximo tick.
+     * - - - - - */
+    private void RequestAttackAvailability(
+        EnemyTypes i_enemyType,
+        AttackType i_attackType,
+        bool i_force)
+    {
+        if (i_attackType == null)
+            return;
+
+        if (_waveManager != null)
+            _waveManager.EnsureAttackAvailability(i_attackType);
+
+        _pendingEnemyType = i_enemyType;
+        _pendingAttackType = i_attackType;
+        _pendingForce = i_force;
+    }
+
+    /* - - - - -
+     * Tenta agendar novamente o ataque após o spawn de um inimigo.
+     * - - - - - */
+    private void RetryPendingSchedule(float i_beatFull)
+    {
+        if (_pendingAttackType == null)
+            return;
+
+        if (ScheduleAttack(
+            Mathf.RoundToInt(i_beatFull * 2f),
+            _pendingEnemyType,
+            _pendingAttackType,
+            _pendingForce) != null)
+        {
+            _pendingAttackType = null;
+        }
+    }
+
+    /* - - - - -
+     * Remove os items do Schedule atual
+     * - - - - - */
     private void RemoveSchedule(EnemySchedule i_schedule)
     {
         // Remove Ready Schedule
@@ -426,6 +568,42 @@ public class EnemyManager : MonoBehaviour
             i_a.attackIndex == i_b.attackIndex;
     }
 
+    /* - - - - -
+     * Limpa o Schedule daquele inimigo apenas.
+     * - - - - - */
+    private void RemoveSchedulesFromEnemy(Enemy i_enemy)
+    {
+        Dictionary<int, List<EnemySchedule>>[] i_schedules = new[]
+        {
+            _enemyMoveSchedule,
+            _enemyReadySchedule,
+            _attackHitSchedule
+        };
+
+        foreach (Dictionary<int, List<EnemySchedule>> i_dict in i_schedules)
+        {
+            List<int> i_emptySteps = new();
+
+            foreach (KeyValuePair<int, List<EnemySchedule>> i_pair in i_dict)
+            {
+                for (int i = i_pair.Value.Count - 1; i >= 0; i--)
+                {
+                    if (i_pair.Value[i].enemy == i_enemy)
+                        i_pair.Value.RemoveAt(i);
+                }
+
+                if (i_pair.Value.Count == 0)
+                    i_emptySteps.Add(i_pair.Key);
+            }
+
+            foreach (int i_step in i_emptySteps)
+                i_dict.Remove(i_step);
+        }
+    }
+
+    /* - - - - -
+     * Edita o dicionário, adicionando apenas um EnemySchedule
+     * - - - - - */
     private void EditDictionary(Dictionary<int, List<EnemySchedule>> i_dict, int i_step, EnemySchedule i_schedule, bool i_replace = true)
     {
         List<EnemySchedule> i_list = new List<EnemySchedule>();
@@ -446,6 +624,9 @@ public class EnemyManager : MonoBehaviour
         EditDictionary(i_dict, i_step, i_list);
     }
 
+    /* - - - - -
+     * Edita o Dicionário, adicionando uma lista de EnemySchedule extra
+     * - - - - - */
     private void EditDictionary(Dictionary<int, List<EnemySchedule>> i_dict, int i_step, List<EnemySchedule> i_schedule)
     {
         if (i_dict.ContainsKey(i_step))
@@ -543,16 +724,120 @@ public class EnemyManager : MonoBehaviour
     {
         activeEnemies.Remove(i_enemy);
 
+            // Morto nao cumpre mais agendamento
+        RemoveSchedulesFromEnemy(i_enemy);
+
         if (i_targeting && playerTargeting)
             playerTargeting.GetNewTarget();
     }
 
-    public void SetAggressiveness(float i_aggressiveness)
+    public void SetAggressiveness(float i_aggressiveness, float i_increase)
     {
-        _aggressiveness = i_aggressiveness;
+        _attackAggressiviness = i_aggressiveness;
 
         if(_attackOdd < i_aggressiveness)
             _attackOdd = i_aggressiveness;
+
+        _aggressivenessIncrease = i_increase;
+    }
+
+    /* - - - - -
+     * Peso atual do tipo no estagio da musica.
+     * - - - - - */
+    public float GetTypeWeight(EnemyTypes i_type)
+    {
+        if (!_typeWeights.TryGetValue(i_type, out float i_weight))
+            return 1f;
+
+        return i_weight;
+    }
+
+    /* - - - - -
+     * Escalonamento unico por beat. O estagio da musica define o alvo.
+     * Spawn e ataque escalam em taxas diferentes.
+     * - - - - - */
+    private void Escalate()
+    {
+        MusicStage i_stage = Composer.instance != null ? Composer.instance.stage : MusicStage.Other;
+
+            // Novo estagio
+        if (i_stage != _lastStage)
+        {
+            _lastStage = i_stage;
+            _stageBeats = 0;
+        }
+
+        _stageBeats++;
+
+            // Procura a config desse estagio
+        StageBonus i_config = default;
+        bool i_found = false;
+
+        for (int i = 0; i < _stageBonus.Length; i++)
+        {
+            if (_stageBonus[i].stage == i_stage)
+            {
+                i_config = _stageBonus[i];
+                i_found = true;
+                break;
+            }
+        }
+
+        if (!i_found)
+            return;
+
+            // Progresso dentro do estagio
+        float i_progress = 1f;
+
+        if (i_config.escalationDurationBeats > 0)
+            i_progress = Mathf.Clamp01((float)_stageBeats / i_config.escalationDurationBeats);
+
+        _spawnAggressiviness = Mathf.Lerp(
+            i_config.spawnAggressivinessStart,
+            i_config.spawnAggressivinessMax,
+            i_progress);
+
+        SetAggressiveness(Mathf.Lerp(
+            i_config.attackAggressivinessStart,
+            i_config.attackAggressivinessMax,
+            i_progress),
+            i_config.attackAggressivinessIncrease);
+
+            // Pesos por tipo do estagio
+        _typeWeights.Clear();
+
+        if (i_config.typeWeights != null)
+        {
+            foreach (TypeWeight i_weight in i_config.typeWeights)
+            {
+                if (i_weight.type == EnemyTypes.Any)
+                    continue;
+
+                _typeWeights[i_weight.type] = Mathf.Lerp(
+                    i_weight.weightStart,
+                    i_weight.weightMax,
+                    i_progress);
+            }
+        }
+    }
+
+    /* - - - - -
+     * Retorna a quantia de todos inimigos com este ataque.
+     * - - - - - */
+    public int CountEnemiesWithAttack(AttackType i_attackType)
+    {
+        int i_count = 0;
+
+        foreach (Enemy i_enemy in activeEnemies)
+        {
+            if (i_enemy == null)
+                continue;
+
+            if (i_enemy.GetAttackIndex(i_attackType) >= 0)
+                i_count++;
+        }
+
+        return i_count;
     }
     #endregion
 
@@ -566,11 +851,19 @@ public class EnemyManager : MonoBehaviour
         float i_beatToAnalyse = i_info.beatFullCount + _thinkAheadTime;
 
         if (i_info.type == TickType.Tick)
+        {
+            RetryPendingSchedule(i_beatToAnalyse);
+
+            Escalate();
             CalculateAttack(i_beatToAnalyse);
+        }
 
         if (i_info.type == TickType.HalfTick)
         {
             i_beatToAnalyse += 0.5f;
+
+            RetryPendingSchedule(i_beatToAnalyse);
+
             CalculateAttack(i_beatToAnalyse);
         }
 
@@ -590,4 +883,49 @@ public class EnemyManager : MonoBehaviour
         
     }
     #endregion
+
+    public void DebugScheduleAttack(AttackType i_attackType)
+    {
+        CalculateAttack(-1, EnemyTypes.Any, i_attackType, true);
+    }
+
+    public void DebugEnsureAttackAvailability(AttackType i_attackType)
+    {
+        if (_waveManager == null)
+            return;
+
+        _waveManager.EnsureAttackAvailability(i_attackType);
+    }
 }
+
+#if UNITY_EDITOR
+[CustomEditor(typeof(EnemyManager))]
+
+public class EnemyManagerEditorGUI : Editor
+{
+    private AttackType _debugAttack;
+
+    public override void OnInspectorGUI()
+    {
+        base.OnInspectorGUI();
+
+        EnemyManager i_script = (EnemyManager)target;
+
+        EditorGUILayout.Space(15f);
+
+        EditorGUILayout.LabelField("DebugSettings", EditorStyles.boldLabel);
+
+        _debugAttack = (AttackType)EditorGUILayout.ObjectField("Attack Type", _debugAttack, typeof(AttackType), false);
+
+        if (GUILayout.Button("Garantir Ataque (spawn)", GUILayout.Width(180f)))
+        {
+            i_script.DebugEnsureAttackAvailability(_debugAttack);
+        }
+
+        if (GUILayout.Button("Agendar Ataque", GUILayout.Width(180f)))
+        {
+            i_script.DebugScheduleAttack(_debugAttack);
+        }
+    }
+}
+#endif

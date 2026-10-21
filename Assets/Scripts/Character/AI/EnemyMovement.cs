@@ -75,14 +75,21 @@ public class EnemyMovement : MonoBehaviour
     /* - - - - -
      * 
      * - - - - - */
-    private void Start()
+    private void Awake()
     {
         _closeEnemiesArray = new Collider[_maxEnemiesCheck];
 
         _agent = GetComponent<NavMeshAgent>();
         _playerTransform = GameObject.FindGameObjectWithTag("Player").transform;
-        targetMove = transform.Find("TargetMove").GetComponent<Transform>();
-        targetMove.SetParent(null, true);
+
+            // Awake (não Start): inimigos do pool são reutilizados e o Start roda só uma vez
+        Transform i_targetMove = transform.Find("TargetMove");
+
+        if (i_targetMove != null)
+        {
+            targetMove = i_targetMove;
+            targetMove.SetParent(null, true);
+        }
 
         _rotatingSpeed = Random.Range(_rotatingSpeed - _rotatingSpeedVariation, _rotatingSpeed + _rotatingSpeedVariation);
 
@@ -197,15 +204,11 @@ public class EnemyMovement : MonoBehaviour
      * - - - - - */
     public void StartIdleMovement()
     {
-        if (_coroutine == null)
-        {
-            _coroutine = StartCoroutine(MovementIdle());
-            allowRotation = true;
-        }
-        else
-        {
-            Debug.LogWarning($"{gameObject.name} is trying to start it's idle coroutine, but it's already running.");
-        }
+        if (_coroutine != null)
+            return;
+
+        _coroutine = StartCoroutine(MovementIdle());
+        allowRotation = true;
     }
 
     /* - - - - -
@@ -222,6 +225,26 @@ public class EnemyMovement : MonoBehaviour
         {
             Debug.LogWarning($"{gameObject.name} is trying to stop it's idle coroutine, but there's none.");
         }
+    }
+
+    /* - - - - -
+     * Prepara o movimento para o inimigo nascer de novo vindo do pool.
+     * - - - - - */
+    public void ResetMovement()
+    {
+            // A corrotina morreu junto com a desativação do objeto
+        _coroutine = null;
+
+            // Realinha o agente na nova posição
+        if (_agent.isOnNavMesh)
+        {
+            _agent.Warp(transform.position);
+            _agent.ResetPath();
+        }
+
+        allowRotation = true;
+
+        StartIdleMovement();
     }
 
     private IEnumerator MovementIdle()

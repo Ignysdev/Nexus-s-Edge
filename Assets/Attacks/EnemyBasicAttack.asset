@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6ba2c559d3d4e564880be0627e1daff1, type: 3}
+  m_Name: EnemyBasicAttack
+  m_EditorClassIdentifier: Assembly-CSharp::AttackType
+  _hits:
+  - <Damage>k__BackingField: 10
+    <PostureDamage>k__BackingField: 5
+    <Heavy>k__BackingField: 0
+    <KnockBackDistance>k__BackingField: 1
+    _duration: 4
+    <Hitbox>k__BackingField:
+      <Type>k__BackingField: 0
+      <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
+      <LocalRotation>k__BackingField: {x: 0, y: 0, z: 0}
+      <Size>k__BackingField: {x: 2, y: 1, z: 4}
+      <Radius>k__BackingField: 0
+    <HitboxTiming>k__BackingField: 0.75
+    <HitboxDuration>k__BackingField: 0.5
+    <DashMaxDistance>k__BackingField: 7
+    <DashTargetDistance>k__BackingField: 1
+    <DashDuration>k__BackingField: 1
+    <DashTiming>k__BackingField: 0.66667
+    <DashEase>k__BackingField: 6
+    dashStart: 0
+    hitboxStart: 0
+    hitboxEnd: 0
+    attackEnd: 0
+    totalDuration: 0
