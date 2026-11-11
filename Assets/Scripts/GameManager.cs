@@ -120,7 +120,7 @@ public class GameManager : MonoBehaviour
         [SerializeField, Tooltip("Mudança de flow ao ter um ataque esquivado por um inimigo")]
     private float _enemyEvade = 0f;
 
-    [Header("Flow - Dano Causado ao Jogador")]
+    [Header("Flow - Dano Causado pelo Jogador")]
         [SerializeField, Tooltip("Quanto de dano representa um ataque básico")]
     private int _playerHitDamageDefault = 5;
         [SerializeField, Tooltip("Quanto de flow é ganho por um ataque básico")]
