@@ -38269,16 +38269,13 @@ MonoBehaviour:
     typeWeights:
     - type: 0
       weightStart: 0
-      weightMax: 0.9
+      weightMax: 0.8
     - type: 1
       weightStart: 0
       weightMax: 0.6
     - type: 2
       weightStart: 0
       weightMax: 0.3
-    - type: 3
-      weightStart: 0
-      weightMax: 0.05
   - stage: 1
     escalationDurationBeats: 20
     attackAggressivinessStart: 0.07
@@ -38296,9 +38293,6 @@ MonoBehaviour:
     - type: 2
       weightStart: 0
       weightMax: 0.25
-    - type: 3
-      weightStart: 0
-      weightMax: 0
   - stage: 2
     escalationDurationBeats: 0
     attackAggressivinessStart: 0.003
@@ -38316,9 +38310,6 @@ MonoBehaviour:
     - type: 2
       weightStart: 0
       weightMax: 0.2
-    - type: 3
-      weightStart: 0
-      weightMax: 0
   - stage: 3
     escalationDurationBeats: 16
     attackAggressivinessStart: 0.1
@@ -38336,9 +38327,6 @@ MonoBehaviour:
     - type: 2
       weightStart: 0
       weightMax: 0.35
-    - type: 3
-      weightStart: 0
-      weightMax: 0.05
   - stage: 4
     escalationDurationBeats: 16
     attackAggressivinessStart: 0.2
@@ -38356,9 +38344,6 @@ MonoBehaviour:
     - type: 2
       weightStart: 0
       weightMax: 0.3
-    - type: 3
-      weightStart: 0
-      weightMax: 0.05
   - stage: 5
     escalationDurationBeats: 0
     attackAggressivinessStart: 0
@@ -38392,9 +38377,6 @@ MonoBehaviour:
     - type: 2
       weightStart: 0
       weightMax: 0.25
-    - type: 3
-      weightStart: 0
-      weightMax: 0
   playerTargeting: {fileID: 0}
   automaticAttackManagement: 1
   _spawnAggressiviness: 0
