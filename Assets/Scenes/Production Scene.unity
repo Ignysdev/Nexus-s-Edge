@@ -22248,20 +22248,20 @@ MonoBehaviour:
   - {fileID: 391823735}
   _tutorialBreakflowController: {fileID: 1602918882}
   _tutorialIntensityBreakflowController: {fileID: 1783413125}
-  _timeInPassageToFail: 6
+  _timeInPassageToFail: 4
   _timeToRepeatFail: 1
   _timeInPassageToFailBeforeRepeat: 12
-  _HealthToFail: 45
-  _FlowToFail: 45
+  _HealthToFail: 70
+  _FlowToFail: 25
   _TimeSinceContantToFail: 2
   _FlowToReturn: 50
   _ChanceReturnVar: 0.5
-  _timeInPassageToVar: 12
+  _timeInPassageToVar: 6
   _timeToRepeatVar: 2
   _timeInPassageToVarBeforeRepeat: 18
   _FlowToVar:
-  - 40
-  - 60
+  - 30
+  - 70
   stage: 1
   breakFlowNext: 0
 --- !u!114 &1239991030
@@ -22278,8 +22278,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::GameManager
   _flowThreshold: 80
   _flowLimit: 35
-  _flowGainPerTickLimit: 5
-  _flowAboveThresholdGainMultiplier: 0.75
+  _flowGainPerTickLimit: 2.5
+  _flowAboveThresholdGainMultiplier: 0.5
   _idleFlowTickStartCount: 6
   _idleFlowTickContinueCount: 2
   _idleFlowIncreaseRate: 0.2
