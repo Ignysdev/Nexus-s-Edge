@@ -200,6 +200,7 @@ static public class GameAudio
             AudioSource i_source = i_child.AddComponent<AudioSource>();
             i_source.playOnAwake = false;
             i_source.loop = false;
+            i_source.ignoreListenerPause = true;
             i_source.spatialBlend = 1f;
             i_source.rolloffMode = AudioRolloffMode.Logarithmic;
             i_source.minDistance = 1f;
