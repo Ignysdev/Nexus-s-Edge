@@ -1443,10 +1443,7 @@ public class EnemyManager : MonoBehaviour
         _breakFlowAttackStep = -1;
 
         if (_breakFlowEffect != null)
-        {
             _breakFlowEffect.End();
-            _breakFlowEffect = null;
-        }
     }
     #endregion
 
