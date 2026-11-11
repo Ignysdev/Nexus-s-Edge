@@ -1056,7 +1056,8 @@ public class EnemyManager : MonoBehaviour
     public bool ScheduleBreakFlow(Enemy i_enemy, int i_hitTick)
     {
         if (i_enemy == null || _breakFlowAttackType == null ||
-            !i_enemy.gameObject.activeInHierarchy)
+            !i_enemy.gameObject.activeInHierarchy ||
+            !i_enemy.IsAvailableForBreakFlow)
             return false;
 
         int i_attackIndex = i_enemy.GetAttackIndex(_breakFlowAttackType);

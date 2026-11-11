@@ -720,6 +720,18 @@ public class Enemy : Controller
         }
     }
 
+    public bool IsAvailableForBreakFlow
+    {
+        get
+        {
+            if (_returningToPool)
+                return false;
+
+            Status i_status = GetComponent<Status>();
+            return i_status != null && i_status.health > 0;
+        }
+    }
+
     /* - - - - -
      * Acionado quando a vida chega em zero.
      * - - - - - */

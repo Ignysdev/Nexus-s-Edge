@@ -747,6 +747,7 @@ public class GameManager : MonoBehaviour
         if (i_targeting != null && i_targeting.currentTarget != null)
         {
             if (i_targeting.currentTarget.gameObject.activeInHierarchy &&
+                i_targeting.currentTarget.IsAvailableForBreakFlow &&
                 (_enemyManager == null || _enemyManager.activeEnemies.Contains(i_targeting.currentTarget)))
                 return i_targeting.currentTarget;
         }
@@ -760,7 +761,9 @@ public class GameManager : MonoBehaviour
 
         foreach (Enemy i_enemy in _enemyManager.activeEnemies)
         {
-            if (i_enemy == null || !i_enemy.gameObject.activeInHierarchy)
+            if (i_enemy == null ||
+                !i_enemy.gameObject.activeInHierarchy ||
+                !i_enemy.IsAvailableForBreakFlow)
                 continue;
 
             float i_distance = (i_enemy.transform.position - i_playerPosition).sqrMagnitude;

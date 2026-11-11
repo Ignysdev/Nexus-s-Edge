@@ -243,7 +243,7 @@ public class Status : MonoBehaviour
 
         if (health <= 0)
         {
-            if (_immortal)
+            if (_immortal || invulnerable)
             {
                 health = 1;
             }
