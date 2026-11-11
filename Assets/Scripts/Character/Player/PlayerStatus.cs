@@ -14,18 +14,31 @@ public class PlayerStatus : Status
      * Inicialização da vida e postura, e componentes.
      * - - - - - */
     protected override void Start()
-    {   
+    {
         base.Start();
+
+        EnableHealthRegen(true);
 
         playerHealth = totalHealth;
         playerPosture = totalPosture;
     }
+
+    private void Update()
+    {
+        playerHealth = health;
+        playerPosture = posture;
+    }
     #endregion
 
     #region Main
-    public override Controller.Action DealDamage(int i_damage, int i_postureDamage, float i_knockback, bool i_heavy = false)
+    public override Controller.Action DealDamage(Vector3 i_origin, int i_damage, int i_postureDamage, float i_knockback, bool i_heavy = false)
     {
-        Controller.Action i_action = base.DealDamage(i_damage, i_postureDamage, i_knockback, i_heavy);
+        Controller.Action i_action = base.DealDamage(
+            i_origin,
+            i_damage,
+            i_postureDamage,
+            i_knockback,
+            i_heavy);
 
         playerHealth = health;
         playerPosture = posture;
@@ -37,12 +50,12 @@ public class PlayerStatus : Status
     #region Timing
     public void TickListener(TickInfo i_info)
     {
-        
+
     }
 
     public void StartListener(TickInfo i_info)
     {
-        
+
     }
     #endregion
 }
