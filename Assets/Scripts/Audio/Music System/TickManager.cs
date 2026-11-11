@@ -9,8 +9,8 @@ using UnityEngine;
 
 public class TickManager : MonoBehaviour
 {
-    #region Vari·veis
-    // VARI¡VEIS VISÕVEIS
+    #region Vari√°veis
+    // VARI√ÅVEIS VIS√çVEIS
     [Header("Audio Settings")]
         [SerializeField, Range(0f, 1f)]
     private float _volume = 0f;
@@ -27,8 +27,8 @@ public class TickManager : MonoBehaviour
         [SerializeField]
     private TickCaller tickCaller;
 
-    // VARI¡VEIS OCULTAS
-        // P˙blicas
+    // VARI√ÅVEIS OCULTAS
+        // P√∫blicas
         [HideInInspector]
     static public TickInfo tickInfo { get; private set; } = new TickInfo
     {
@@ -38,6 +38,9 @@ public class TickManager : MonoBehaviour
         beatFullCount = 1,
         bar = 0
     };
+
+        [HideInInspector]
+    static public bool paused { get; private set; } = false;
 
         // Privadas
     private AudioClip _currentGuide;
@@ -51,14 +54,20 @@ public class TickManager : MonoBehaviour
     private double[] _halfTickTimers;
     #endregion
 
-    #region FunÁıes Unity
+    #region Fun√ß√µes Unity
     /* - - - - -
-     * Inicia o ·udio guia
+     * Inicia o √°udio guia
      * - - - - - */
     void Start()
     {
         if (!tickCaller)
             tickCaller = Resources.Load<TickCaller>("Tick");
+
+        TickInfo i_reset = tickInfo;
+        i_reset.beat = 1;
+        i_reset.beatFullCount = 1;
+        i_reset.bar = 0;
+        tickInfo = i_reset;
 
         SetGuideAudio(_startingGuideClipIndex);
 
@@ -84,9 +93,19 @@ public class TickManager : MonoBehaviour
     }
     #endregion
 
-    #region FunÁıes Internas ¡udio
+    #region Fun√ß√µes Internas √°udio
+    static public void Pause()
+    {
+        paused = true;
+    }
+
+    static public void Unpause()
+    {
+        paused = false;
+    }
+
     /* - - - - -
-     * ConfiguraÁ„o do ¡udio Guia
+     * Configura√ß√£o do √Åudio Guia
      * - - - - - */
     public void SetGuideAudio(int i_index = 0)
     {
@@ -107,11 +126,13 @@ public class TickManager : MonoBehaviour
         _halfTickTimers = new double[tickInfo.beatTotal];
 
         _barLenght = (double)_currentGuide.samples / _currentGuide.frequency;
+
+        _beatLenght = _barLenght / tickInfo.beatTotal;
     }
 
     /* - - - - -
-     * Agenda o ·udio para tocar assim que o atual acabar.
-     * O agendamento ocorre quando o ˙ltimo tick antes do prÛximo compasso È chamado.
+     * Agenda o √°udio para tocar assim que o atual acabar.
+     * O agendamento ocorre quando o √∫ltimo tick antes do pr√≥ximo compasso √© chamado.
      * - - - - - */
     void ScheduleNextGuideBar()
     {
@@ -129,7 +150,7 @@ public class TickManager : MonoBehaviour
 
     #region Tick Calls
     /* - - - - -
-     * Agenda os prÛximos ticks que ir„o ser chamados antes da prÛxima barra.
+     * Agenda os pr√≥ximos ticks que ir√£o ser chamados antes da pr√≥xima barra.
      * A quantidade de ticks e halfticks dependem de quantas batidas existem no guia.
      * - - - - - */
     void TickCallSetup(double[] i_tickTimers, double[] i_halfTickTimers, double i_duration, double i_startingTime)
@@ -164,12 +185,12 @@ public class TickManager : MonoBehaviour
 
     /* - - - - -
      * Chamada dos ticks.
-     * No ˙ltimo tick da barra È agendado o prÛximo ·udio-guia.
-     * Os Ticks sempre passam todas as informaÁıes presentes em TickInfo presente em AudioData.
+     * No √∫ltimo tick da barra √© agendado o pr√≥ximo √°udio-guia.
+     * Os Ticks sempre passam todas as informa√ß√µes presentes em TickInfo presente em AudioData.
      * - - - - - */
     IEnumerator TickCall(double i_tickTimer, double i_nextTickTimers)
     {
-        while(AudioSettings.dspTime < i_tickTimer)
+        while (paused || AudioSettings.dspTime < i_tickTimer)
             yield return null;
 
         TickInfo i_info = tickInfo;
@@ -200,11 +221,11 @@ public class TickManager : MonoBehaviour
     }
     /* - - - - -
      * Chamada dos halfticks.
-     * Igual aos ticks, mas n„o agendam o ·udio-guia.
+     * Igual aos ticks, mas n√£o agendam o √°udio-guia.
      * - - - - - */
     IEnumerator HalfTickCall(double i_halfTickTimer, double i_nextHalfTickTimers)
     {
-        while (AudioSettings.dspTime < i_halfTickTimer)
+        while (paused || AudioSettings.dspTime < i_halfTickTimer)
             yield return null;
 
         TickInfo i_info = tickInfo;

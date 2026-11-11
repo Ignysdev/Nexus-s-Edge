@@ -17,7 +17,7 @@ MonoBehaviour:
     <PostureDamage>k__BackingField: 0
     <Heavy>k__BackingField: 0
     <KnockBackDistance>k__BackingField: 0
-    _duration: 0
+    _duration: 1
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
       <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
@@ -40,7 +40,7 @@ MonoBehaviour:
     <PostureDamage>k__BackingField: 0
     <Heavy>k__BackingField: 0
     <KnockBackDistance>k__BackingField: 0
-    _duration: 0
+    _duration: 1
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
       <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
@@ -63,7 +63,7 @@ MonoBehaviour:
     <PostureDamage>k__BackingField: 0
     <Heavy>k__BackingField: 0
     <KnockBackDistance>k__BackingField: 0
-    _duration: 0
+    _duration: 1
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
       <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
@@ -86,7 +86,7 @@ MonoBehaviour:
     <PostureDamage>k__BackingField: 0
     <Heavy>k__BackingField: 0
     <KnockBackDistance>k__BackingField: 0
-    _duration: 0
+    _duration: 1
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
       <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
@@ -105,3 +105,4 @@ MonoBehaviour:
     hitboxEnd: 0.31285715
     attackEnd: -0.12857144
     totalDuration: 0
+  _animatorTrigger: Heavy

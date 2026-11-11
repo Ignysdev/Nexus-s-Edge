@@ -9,7 +9,7 @@ public class AttackType : ScriptableObject
 {
     #region Estruturas
     /* - - - - -
-     * Configuração dos hits do ataque.
+     * ConfiguraÃ§Ã£o dos hits do ataque.
      * - - - - - *
     [System.Serializable]
     public struct Hits
@@ -17,22 +17,22 @@ public class AttackType : ScriptableObject
         [field: Header("Geral")]
         [field: Tooltip("Dano causado pelo ataque"), SerializeField]
         public int Damage { get; private set; }
-        [field: Tooltip("Duração do ataque em ticks"), Min(0.5f), SerializeField]
+        [field: Tooltip("DuraÃ§Ã£o do ataque em ticks"), Min(0.5f), SerializeField]
         private float _duration;
         public float Duration { get { return _duration - 0.1f; } private set { _duration = value; } }
-        [field: Tooltip("Determina quando o hitbox se ativa. Baseado na duração, sendo 0 no começo e 1 no final"), Range(0,1), SerializeField]
+        [field: Tooltip("Determina quando o hitbox se ativa. Baseado na duraÃ§Ã£o, sendo 0 no comeÃ§o e 1 no final"), Range(0,1), SerializeField]
         [field: Header("Hitbox")]
         public float HitboxTiming { get; private set; }
-        [field: Tooltip("Duração em ticks que a hitbox fica ativa. Máximo é até a duração do ataque"), SerializeField]
+        [field: Tooltip("DuraÃ§Ã£o em ticks que a hitbox fica ativa. MÃ¡ximo Ã© atÃ© a duraÃ§Ã£o do ataque"), SerializeField]
         public float HitboxDuration { get; private set; }
-        [field: Tooltip("Distancia máxima do dash. Mantenha 0 para não ter dash"), SerializeField]
+        [field: Tooltip("Distancia mÃ¡xima do dash. Mantenha 0 para nÃ£o ter dash"), SerializeField]
         [field: Header("Dash")]
         public float DashMaxDistance { get; private set; }
-        [field: Tooltip("Distancia alvo entre o alvo e o atacante após o dash"), SerializeField]
+        [field: Tooltip("Distancia alvo entre o alvo e o atacante apÃ³s o dash"), SerializeField]
         public float DashTargetDistance { get; private set; }
-        [field: Tooltip("Duração do dash em ticks"), SerializeField]
+        [field: Tooltip("DuraÃ§Ã£o do dash em ticks"), SerializeField]
         public float DashDuration { get; private set; }
-        [field: Tooltip("Determina quando o dash acontece. Baseado no tempo entre a ativação da hitbox sendo 0 no começo e 1 junto da hitbox"), Range(0, 1), SerializeField]
+        [field: Tooltip("Determina quando o dash acontece. Baseado no tempo entre a ativaÃ§Ã£o da hitbox sendo 0 no comeÃ§o e 1 junto da hitbox"), Range(0, 1), SerializeField]
         public float DashTiming { get; private set; }
         [field: Tooltip("Tipo de ease do Dash"), SerializeField]
         public Ease DashEase { get; private set; }
@@ -48,13 +48,13 @@ public class AttackType : ScriptableObject
     }
     #endregion
 
-    #region Variáveis
-    // VARIÁVEIS VISÍVEIS
-    [Header("Configurações de Ataque")]
+    #region VariÃ¡veis
+    // VARIÃVEIS VISÃVEIS
+    [Header("ConfiguraÃ§Ãµes de Ataque")]
         [SerializeField]
     private Hits[] _hits;
-    // VARIÁVEIS OCULTAS
-    // Referências
+    // VARIÃVEIS OCULTAS
+    // ReferÃªncias
     #endregion
 
     #region Main
@@ -81,20 +81,20 @@ public class AttackType : ScriptableObject
     {
         Hits i_newHit = i_hit;
 
-        // Timing das durações
+        // Timing das duraÃ§Ãµes
         double i_hitDuration = i_hit.Duration * TickManager.tickInfo.tickDuration;
         double i_hitboxDuration = i_hit.HitboxDuration * TickManager.tickInfo.tickDuration;
 
         // Quando vai iniciar o hitbox
         double i_hitboxStart = i_hitDuration * i_newHit.HitboxTiming;
 
-        // Quando irá iniciar o dash (caso tenha um dash)
+        // Quando irÃ¡ iniciar o dash (caso tenha um dash)
         double i_dashStart;
         if (i_newHit.DashMaxDistance > 0)
         {
             i_dashStart = i_hitboxStart * i_newHit.DashTiming;
 
-            // Ajusta o início da hitbox
+            // Ajusta o inÃ­cio da hitbox
             i_hitboxStart -= i_dashStart;
         }
         else
@@ -102,10 +102,10 @@ public class AttackType : ScriptableObject
             i_dashStart = 0f;
         }
 
-        // Duração da hitbox
+        // DuraÃ§Ã£o da hitbox
         double i_hitboxEnd = i_hit.HitboxDuration * TickManager.tickInfo.tickDuration;
 
-        // Mantém a hitbox ligada no máximo até o ataque acabar
+        // MantÃ©m a hitbox ligada no mÃ¡ximo atÃ© o ataque acabar
         if (i_hitboxStart + i_hitboxEnd + i_dashStart >= i_hitDuration)
             i_hitboxEnd = i_hitDuration - (i_hitboxStart + i_dashStart);
 
@@ -134,13 +134,13 @@ public class AttackType : ScriptableObject
         public int Damage { get; private set; }
             [field: Tooltip("Dano de postura causado pelo ataque"), SerializeField]
         public int PostureDamage { get; private set; }
-            [field: Tooltip("Se o ataque é considerado pesado"), SerializeField]
+            [field: Tooltip("Se o ataque Ã© considerado pesado"), SerializeField]
             [field: Space]
         public bool Heavy { get; private set; }
-            [field: Tooltip("Distância de knockback"), SerializeField]
+            [field: Tooltip("DistÃ¢ncia de knockback"), SerializeField]
         public float KnockBackDistance { get; private set; }
             [field: Space]
-            [field: Tooltip("Duração do ataque em ticks"), Min(0.5f), SerializeField]
+            [field: Tooltip("DuraÃ§Ã£o do ataque em ticks"), Min(0.5f), SerializeField]
         private float _duration;
         public float Duration
         {
@@ -155,21 +155,21 @@ public class AttackType : ScriptableObject
         }
 
         [field: Header("Hitbox")]
-            [field: Tooltip("Configuração da hitbox utilizada por este hit"), SerializeField]
+            [field: Tooltip("ConfiguraÃ§Ã£o da hitbox utilizada por este hit"), SerializeField]
         public HitboxData Hitbox { get; private set; }
-            [field: Tooltip("Determina quando o hitbox se ativa. Baseado na duração, sendo 0 no começo e 1 no final"), Range(0, 1), SerializeField]
+            [field: Tooltip("Determina quando o hitbox se ativa. Baseado na duraÃ§Ã£o, sendo 0 no comeÃ§o e 1 no final"), Range(0, 1), SerializeField]
         public float HitboxTiming { get; private set; }
-            [field: Tooltip("Duração em ticks que a hitbox fica ativa. Máximo é até a duração do ataque"), Min(0), SerializeField]
+            [field: Tooltip("DuraÃ§Ã£o em ticks que a hitbox fica ativa. MÃ¡ximo Ã© atÃ© a duraÃ§Ã£o do ataque"), Min(0), SerializeField]
         public float HitboxDuration { get; private set; }
 
         [field: Header("Dash")]
-            [field: Tooltip("Distância máxima do dash. Mantenha 0 para não ter dash"), SerializeField]
+            [field: Tooltip("DistÃ¢ncia mÃ¡xima do dash. Mantenha 0 para nÃ£o ter dash"), SerializeField]
         public float DashMaxDistance { get; private set; }
-            [field: Tooltip("Distância alvo entre o alvo e o atacante após o dash"), SerializeField]
+            [field: Tooltip("DistÃ¢ncia alvo entre o alvo e o atacante apÃ³s o dash"), SerializeField]
         public float DashTargetDistance { get; private set; }
-            [field: Tooltip("Duração do dash em ticks"), SerializeField]
+            [field: Tooltip("DuraÃ§Ã£o do dash em ticks"), SerializeField]
         public float DashDuration { get; private set; }
-            [field: Tooltip("Determina quando o dash acontece. Baseado no tempo entre a ativação da hitbox sendo 0 no começo e 1 junto da hitbox"), Range(0, 1), SerializeField]
+            [field: Tooltip("Determina quando o dash acontece. Baseado no tempo entre a ativaÃ§Ã£o da hitbox sendo 0 no comeÃ§o e 1 junto da hitbox"), Range(0, 1), SerializeField]
         public float DashTiming { get; private set; }
             [field: Tooltip("Tipo de ease do Dash"), SerializeField]
         public Ease DashEase { get; private set; }
@@ -188,16 +188,22 @@ public class AttackType : ScriptableObject
     }
     #endregion
 
-    #region Variáveis
-    [Header("Configurações de Ataque")]
+    #region VariÃ¡veis
+    [Header("ConfiguraÃ§Ãµes de Ataque")]
         [SerializeField]
     private Hits[] _hits;
+
+    [Header("AnimaÃ§Ã£o")]
+        [SerializeField, Tooltip("Trigger obrigatÃ³rio do Animator para este ataque")]
+    private string _animatorTrigger;
+
+    public string AnimatorTrigger => _animatorTrigger;
     #endregion
 
 
     #region Main
     /* - - - - -
-     * Pega a duração de todos os hits.
+     * Pega a duraÃ§Ã£o de todos os hits.
      * - - - - - */
     public Hits[] GetHits()
     {
@@ -211,8 +217,21 @@ public class AttackType : ScriptableObject
         return i_hits;
     }
 
+    public float FirstHitTiming(bool i_beats = true)
+    {
+        Hits[] i_hits = GetHits();
+
+        if (i_hits == null || i_hits.Length == 0)
+            return 0f;
+
+        if (i_beats)
+            return (i_hits[0].Duration + 0.1f) * i_hits[0].HitboxTiming;
+
+        return i_hits[0].dashStart + i_hits[0].hitboxStart;
+    }
+
     /* - - - - -
-     * Calcula a duração daquele hit específico.
+     * Calcula a duraÃ§Ã£o daquele hit especÃ­fico.
      * - - - - - */
     private Hits CalculateHit(Hits i_hit)
     {

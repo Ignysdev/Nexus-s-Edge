@@ -20,18 +20,20 @@ MonoBehaviour:
     _duration: 0.5
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
-      <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
+      <LocalPosition>k__BackingField: {x: 0, y: 0, z: 1.5}
       <LocalRotation>k__BackingField: {x: 0, y: 0, z: 0}
-      <Size>k__BackingField: {x: 2.5, y: 1, z: 4}
+      <Size>k__BackingField: {x: 3, y: 1, z: 5}
       <Radius>k__BackingField: 0.5
     <HitboxTiming>k__BackingField: 0.8
     <HitboxDuration>k__BackingField: 0.2
     <DashMaxDistance>k__BackingField: 2.5
     <DashTargetDistance>k__BackingField: 1.5
     <DashDuration>k__BackingField: 0.4
-    <DashTiming>k__BackingField: 0
+    <DashTiming>k__BackingField: 0.2
     <DashEase>k__BackingField: 7
     dashStart: 0
     hitboxStart: 0.13714287
     hitboxEnd: 0.034285713
     attackEnd: -0.08571429
+    totalDuration: 0
+  _animatorTrigger: Attack

@@ -6,8 +6,8 @@ using AudioData;
 
 public class AudioController : MonoBehaviour
 {
-    #region Vari·veis
-    // VARI¡VEIS VISÕVEIS
+    #region Vari√°veis
+    // VARI√ÅVEIS VIS√çVEIS
     [Header("Audio Settings")]
     public bool isLoopable = true;
         [SerializeField]
@@ -27,8 +27,8 @@ public class AudioController : MonoBehaviour
     AudioSource[] audioSources;
     //public bool notifyComposer = false;
 
-    // VARI¡VEIS OCULTAS
-        // C·lculo prÛxima faixa
+    // VARI√ÅVEIS OCULTAS
+        // C√°lculo pr√≥xima faixa
     private int _nextLastBar = 0;
     private int _nextLastBeat = 0;
     private int _currentAudioSouce = 0;
@@ -36,7 +36,7 @@ public class AudioController : MonoBehaviour
     private int _oldLastBar = 0;
     private int _oldLastBeat = 0;
 
-        // InformaÁıes
+        // Informa√ß√µes
     private AudioItem _currentAudio;
     private int _currentAudioIndex;
     private TickInfo _currentMusicInfo;
@@ -57,33 +57,35 @@ public class AudioController : MonoBehaviour
         //
     #endregion
 
-    #region FunÁıes Unity
+    #region Fun√ß√µes Unity
     /* - - - - -
-     * AlteraÁ„o Volume.
+     * Altera√ß√£o Volume.
      * - - - - - */
     private void Update()
     {
-        audioSources[_currentAudioSouce].volume = volume;
+        audioSources[_currentAudioSouce].volume = volume * GameAudio.MusicVolumeScale;
         //audioSources[_currentAudioSouce].pitch = pitch;
     }
 
     /* - - - - -
-     * Configurar ·udio padr„o.
+     * Configurar √°udio padr√£o.
      * - - - - - */
     private void Awake()
     {
         SetupIndexArray();
 
-        audioSources[_currentAudioSouce].volume = volume;
+        GameAudio.ApplyMusicGroup(audioSources);
+
+        audioSources[_currentAudioSouce].volume = volume * GameAudio.MusicVolumeScale;
         SelectAudioItem(audioList[0]);
         _currentAudioIndex = 0;
     }
     #endregion
 
-    #region Utilidades ¡udio - P˙blico
+    #region Utilidades √°udio - P√∫blico
 
     /* - - - - -
-     * Agenda o ·udio para tocar em um certo momento.
+     * Agenda o √°udio para tocar em um certo momento.
      * - - - - - */
     public void PlayAudioAt(double i_startTime)
     {
@@ -112,7 +114,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura qual ·udio ir· usar no PlayAudioAt
+     * Configura qual √°udio ir√° usar no PlayAudioAt
      * - - - - - */
     public void PlayAudioAt(double i_startTime, AudioItem i_audioItem)
     {
@@ -121,7 +123,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura qual ·udio ir· usar no PlayAudioAt por index
+     * Configura qual √°udio ir√° usar no PlayAudioAt por index
      * - - - - - */
     public void PlayAudioAt(double i_startTime, int i_index)
     {
@@ -130,7 +132,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura para que o ·udio a tocar no PlayAudioAt seja o prÛximo da lista
+     * Configura para que o √°udio a tocar no PlayAudioAt seja o pr√≥ximo da lista
      * - - - - - */
     public void PlayNextAudioAt(double i_startTime, bool i_sameIndex)
     {
@@ -139,7 +141,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura qual ·udio ir· usar no PlayAudioAt pelo est·gio
+     * Configura qual √°udio ir√° usar no PlayAudioAt pelo est√°gio
      * - - - - - */
     public void PlayStageAudioAt(double i_startTime, MusicStage i_stage)
     {
@@ -148,7 +150,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Agenda o ·udio para o prÛximo tick.
+     * Agenda o √°udio para o pr√≥ximo tick.
      * - - - - - */
     public void PlayAudioNextTick()
     {
@@ -156,7 +158,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura qual ·udio ir· usar no PlayAudioNextTick
+     * Configura qual √°udio ir√° usar no PlayAudioNextTick
      * - - - - - */
     public void PlayAudioNextTick(AudioItem i_audioItem)
     {
@@ -165,7 +167,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura qual ·udio ir· usar no PlayAudioNextTick por index
+     * Configura qual √°udio ir√° usar no PlayAudioNextTick por index
      * - - - - - */
     public void PlayAudioNextTick(int i_index)
     {
@@ -174,7 +176,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura para que o ·udio a tocar no PlayAudioNextTick seja o prÛximo da lista
+     * Configura para que o √°udio a tocar no PlayAudioNextTick seja o pr√≥ximo da lista
      * - - - - - */
     public void PlayNextAudioNextTick(bool i_sameIndex)
     {
@@ -183,7 +185,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Configura para que o ·udio a tocar no PlayAudioNextTick pelo est·gio
+     * Configura para que o √°udio a tocar no PlayAudioNextTick pelo est√°gio
      * - - - - - */
     public void PlayStageAudioNextTick(MusicStage i_stage)
     {
@@ -192,7 +194,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Cancela o prÛximo ·udio a ser tocado, todos os ·udios ou apenas o atual.
+     * Cancela o pr√≥ximo √°udio a ser tocado, todos os √°udios ou apenas o atual.
      * - - - - - */
     public void CancelAudio(bool i_forceStopCurrent = false, bool i_fullStop = false)
     {
@@ -216,7 +218,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Retorna o timing da ˙ltima batida
+     * Retorna o timing da √∫ltima batida
      * - - - - - */
     public int[] GetEndTiming()
     {
@@ -229,7 +231,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Retorna o est·gio atual
+     * Retorna o est√°gio atual
      * - - - - - */
     public MusicStage GetMusicStage()
     {
@@ -237,7 +239,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Retorna se È o ˙ltimo ·udio do Index.
+     * Retorna se √© o √∫ltimo √°udio do Index.
      * - - - - - */
     public bool IsLastIndex()
     {
@@ -259,9 +261,9 @@ public class AudioController : MonoBehaviour
     }
     #endregion
 
-    #region Utilidades ¡udio - Interno
+    #region Utilidades √°udio - Interno
     /* - - - - -
-     * Define o ·udio
+     * Define o √°udio
      * - - - - - */
     private void SelectAudioItem(AudioItem i_audioItem)
     {
@@ -270,7 +272,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Define o ·udio por index
+     * Define o √°udio por index
      * - - - - - */
     private void SelectAudioItem(int i_index)
     {
@@ -279,7 +281,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Define o ·udio pelo primeiro ·udio do est·gio
+     * Define o √°udio pelo primeiro √°udio do est√°gio
      * - - - - - */
     private bool SelectAudioItem(MusicStage i_stage)
     {
@@ -294,7 +296,7 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Define o ·udio por index
+     * Define o √°udio por index
      * - - - - - */
     private void SelectNextAudioItem(bool i_sameIndex = true)
     {
@@ -324,8 +326,8 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * MudanÁa da saÌda de ·udio.
-     * Isso existe para permitir que o ·udio anterior continue tocando apÛs o novo iniciar;
+     * Mudan√ßa da sa√≠da de √°udio.
+     * Isso existe para permitir que o √°udio anterior continue tocando ap√≥s o novo iniciar;
      * Utilizado especialmente para permitir os loops serem conexos.
      * - - - - - */
     private int SelectAudioSources(bool i_nextSource = true)
@@ -346,10 +348,10 @@ public class AudioController : MonoBehaviour
     }
 
     /* - - - - -
-     * Define a array _indexAudioArray. Cada entrada representa a primeiro ponto onde o primeiro ·udio com o index daquela entrada.
+     * Define a array _indexAudioArray. Cada entrada representa a primeiro ponto onde o primeiro √°udio com o index daquela entrada.
      * Exemplo:
      *  Se _indexAudioArray[3] = 7
-     *  quer dizer que o audioList[7] È a primeira faixa de ·udio com o index 3.
+     *  quer dizer que o audioList[7] √© a primeira faixa de √°udio com o index 3.
      * - - - - - */
     private void SetupIndexArray()
     {

@@ -59,3 +59,4 @@ MonoBehaviour:
     hitboxEnd: 0
     attackEnd: 0
     totalDuration: 0
+  _animatorTrigger: Attack

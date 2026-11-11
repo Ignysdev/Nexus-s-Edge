@@ -1,5 +1,4 @@
 using AudioData;
-using DG.Tweening.Core.Easing;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -12,39 +11,43 @@ public class PlayerTargeting : MonoBehaviour
     [System.Serializable]
     private struct EnemyDetectionAngle
     {
-        [field: Tooltip("O ¬ngulo m·ximo de diferenÁa da direÁ„o")]
+        [field: Tooltip("O √¢ngulo m√°ximo de diferen√ßa da dire√ß√£o")]
         public float angle;
         [field: Tooltip("O multiplicador de prioridade"), UnityEngine.Range(0.1f, 2)]
         public float multiplier;
     }
     #endregion
 
-    #region Vari·veis
-    // VARI¡VEIS VISÕVEIS
+    #region Vari√°veis
+    // VARI√ÅVEIS VIS√çVEIS
     [Header("Geral")]
-        [SerializeField, Tooltip("Dist‚ncia m·xima de detecÁ„o")]
+        [SerializeField, Tooltip("Dist√¢ncia m√°xima de detec√ß√£o")]
     private float _maxDistance = 100f;
+    [Header("Marca no ch√£o")]
+        [SerializeField, Tooltip("Transform da marca hexagonal que segue o alvo atual.")]
+    private Transform _targetMark;
+        [SerializeField, Min(0f)]
+    private float _targetMarkHeight = 0.02f;
     [Header("Prioridade do alvo atual")]
-        [SerializeField, Tooltip("Dist‚ncia mÌnima e m·xima de prioridade do oponente atual")]
+        [SerializeField, Tooltip("Dist√¢ncia m√≠nima e m√°xima de prioridade do oponente atual")]
     private Vector2 _currentSnapDistance = new Vector2(5, 10);
-        [SerializeField, Tooltip("Prioridade do oponente atual da dist‚ncia"), UnityEngine.Range(0.01f, 1f)]
+        [SerializeField, Tooltip("Prioridade do oponente atual da dist√¢ncia"), UnityEngine.Range(0.01f, 1f)]
     private float _currentSnapDistanceStrengh = 0.3f;
     [Space]
-        [SerializeField, Tooltip("Tempo em segundos mÌnimo e m·ximo de prioridade do oponente atual desde o ˙ltimo ataque")]
+        [SerializeField, Tooltip("Tempo em segundos m√≠nimo e m√°ximo de prioridade do oponente atual desde o √∫ltimo ataque")]
     private Vector2 _currentSnapAttackTiming = new Vector2(0.5f, 3);
         [SerializeField, Tooltip("Prioridade do oponente atual em tempo"), UnityEngine.Range(0.01f, 1f)]
     private float _currentSnapAttackTimingStrengh = 0.3f;
 
-    [Header("¬ngulos")]
+    [Header("√Çngulos")]
         [SerializeField]
     private EnemyDetectionAngle[] _enemyDetectionAngles;
 
-    // VARI¡VEIS OCULTAS
-        // ReferÍncias
+    // VARI√ÅVEIS OCULTAS
+        // Refer√™ncias
     private EnemyManager _enemyManager;
-    private GameObject _marking;
 
-        // P˙blicas
+        // P√∫blicas
         [HideInInspector]
     public Enemy currentTarget { get; private set; }
 
@@ -56,7 +59,7 @@ public class PlayerTargeting : MonoBehaviour
 
     #endregion
 
-    #region FunÁıes Unity
+    #region Fun√ß√µes Unity
     /* - - - - -
      * 
      * - - - - - */
@@ -66,19 +69,28 @@ public class PlayerTargeting : MonoBehaviour
 
         _enemyManager.playerTargeting = this;
 
-        _marking = transform.Find("Marking").gameObject;
-        _marking.SetActive(false);
+        if (_targetMark != null)
+            SetTargetMark(currentTarget);
     }
 
     private void Update()
     {
         _lastAttack += Time.deltaTime;
     }
+
+    private void LateUpdate()
+    {
+        if (_targetMark == null || currentTarget == null)
+            return;
+
+        _targetMark.position =
+            currentTarget.transform.position + Vector3.up * _targetMarkHeight;
+    }
     #endregion
 
     #region Main
     /* - - - - -
-     * Seleciona um novo alvo usando a direÁ„o base.
+     * Seleciona um novo alvo usando a dire√ß√£o base.
      * - - - - - */
     public Enemy GetNewTarget()
     {
@@ -113,7 +125,7 @@ public class PlayerTargeting : MonoBehaviour
             if (currentTarget)
                 currentTarget.target = false;
             currentTarget = null;
-            SetTargetMarking();
+            SetTargetMark(null);
 
             return null;
         }
@@ -131,7 +143,7 @@ public class PlayerTargeting : MonoBehaviour
             return x_d.CompareTo(y_d);
         });
 
-        // Retorna o inimigo priorit·rio de acordo com EnemyDetectionAngles
+        // Retorna o inimigo priorit√°rio de acordo com EnemyDetectionAngles
         if(currentTarget)
             currentTarget.target = false;
         currentTarget = null;
@@ -147,7 +159,7 @@ public class PlayerTargeting : MonoBehaviour
                 i_newTarget.target = true;
 
             currentTarget = i_newTarget;
-            SetTargetMarking();
+            SetTargetMark(currentTarget);
         }
         else
         {
@@ -190,24 +202,23 @@ public class PlayerTargeting : MonoBehaviour
         return i_newValue <= i_currentValue * i_snapTiming * i_snapDistance;
     }
 
-
-    // TEMP
-    private void SetTargetMarking()
+    private void SetTargetMark(Enemy i_target)
     {
-        if(currentTarget != null)
-        {
-            _marking.SetActive(true);
-            _marking.transform.SetParent(currentTarget.transform, false);
-        }
-        else
-        {
-            _marking.transform.SetParent(transform, false);
-            _marking.SetActive(false);
-        }
+        if (_targetMark == null)
+            return;
+
+        bool i_visible = i_target != null;
+
+        if (_targetMark.gameObject.activeSelf != i_visible)
+            _targetMark.gameObject.SetActive(i_visible);
+
+        if (i_visible)
+            _targetMark.position =
+                i_target.transform.position + Vector3.up * _targetMarkHeight;
     }
     #endregion
 
-    #region Matem·tica
+    #region Matem√°tica
     private float GetAngleMultiplier(Enemy i_enemy)
     {
         float i_angle = GetAngle(i_enemy);

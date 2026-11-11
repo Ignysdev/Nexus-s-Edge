@@ -35,7 +35,8 @@ public class TickListener : MonoBehaviour
      * - - - - - */
     private void OnDisable()
     {
-        tickCaller.RemoveListener(this);
+        if (tickCaller != null)
+            tickCaller.RemoveListener(this);
     }
     #endregion
 

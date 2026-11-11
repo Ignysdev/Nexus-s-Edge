@@ -6,6 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class EnemyManager : MonoBehaviour
 {
@@ -45,9 +46,9 @@ public class EnemyManager : MonoBehaviour
     {
             [Tooltip("Tipo do Inimigo")]
         public EnemyTypes type;
-            [UnityEngine.Range(0f, 1f), Tooltip("Peso mÌnimo")]
+            [UnityEngine.Range(0f, 1f), Tooltip("Peso m√≠nimo")]
         public float weightStart;
-            [UnityEngine.Range(0f, 1f), Tooltip("Peso m·ximo")]
+            [UnityEngine.Range(0f, 1f), Tooltip("Peso m√°ximo")]
         public float weightMax;
     }
 
@@ -78,24 +79,48 @@ public class EnemyManager : MonoBehaviour
     }
     #endregion
 
-    #region Vari·veis
-    // VARI¡VEIS VISÕVEIS
-    [Header("C·lculos ataques")]
+    #region Vari√°veis
+    // VARI√ÅVEIS VIS√çVEIS
+    [Header("C√°lculos ataques")]
         [SerializeField, Min(4), Tooltip("Quantos beats a frente o manager vai planejar os ataques")]
     private int _thinkAheadTime = 8;
         [Space]
-        [SerializeField, Min(1), Tooltip("Ataques m·ximos em um ˙nico beat")]
+        [SerializeField, Min(1), Tooltip("Ataques m√°ximos em um √∫nico beat")]
     private int _maxAttacksPerBeat = 1;
-        [SerializeField, Min(0), Tooltip("EspaÁo mÌnimo entre um ataque e outro")]
+        [SerializeField, Min(0), Tooltip("Espa√ßo m√≠nimo entre um ataque e outro")]
     private int _minimumAttackSpacing = 0;
-        [SerializeField, Min(1), Tooltip("EspaÁo m·ximo entre um ataque e outro")]
+        [SerializeField, Min(1), Tooltip("Espa√ßo m√°ximo entre um ataque e outro")]
     private int _maximumAttackSpacing = 8;
         [Space]
-        [SerializeField, Min(2), Tooltip("Tempo de antecedÍncia que o inimigo se move. Randomizado entre esse valor e 2")]
+        [SerializeField, Min(2), Tooltip("Tempo de anteced√™ncia que o inimigo se move. Randomizado entre esse valor e 2")]
     private int _moveAheadTime = 4;
-        //[Space]
-        [SerializeField]
+
+    [Space(15)]
+    [Header("BreakFlow")]
+        [SerializeField, Tooltip("Ataque especial usado no BreakFlow")]
+    private AttackType _breakFlowAttackType;
+        [SerializeField, Tooltip("Refer√™ncia do objeto do efeito")]
+    private BreakFlowBarrier _breakFlowBarrier;
+
+    [Header("Manual Schedule (Climax)")]
+        [SerializeField, Tooltip("Ataques manuais do Cl√≠max do ciclo 1. Key = meio-tick (1/8 note); em 4/4, 8 keys = 1 compasso.")]
     private SerializableDictionary<int, List<EnemySchedule>> _ManualScheduleCycle1 = new SerializableDictionary<int, List<EnemySchedule>>();
+        [SerializeField, Tooltip("Ataques manuais do Cl√≠max do ciclo 2. Key = meio-tick (1/8 note); em 4/4, 8 keys = 1 compasso.")]
+    private SerializableDictionary<int, List<EnemySchedule>> _ManualScheduleCycle2 = new SerializableDictionary<int, List<EnemySchedule>>();
+        [SerializeField, Tooltip("Ataques manuais do Cl√≠max do ciclo 3. Key = meio-tick (1/8 note); em 4/4, 8 keys = 1 compasso.")]
+    private SerializableDictionary<int, List<EnemySchedule>> _ManualScheduleCycle3 = new SerializableDictionary<int, List<EnemySchedule>>();
+        [SerializeField, Tooltip("Se o ciclo atual n√£o tiver ataques, usa o ciclo 1 como teste")]
+    private bool _manualFallbackToCycle1 = true;
+        [SerializeField, Tooltip("Durante o Cl√≠max, usa o Manual Schedule e pausa os ataques autom√°ticos.")]
+    private bool _manualScheduleOnClimax = true;
+        [SerializeField, Tooltip("Key marca o momento do primeiro hitbox")]
+    private bool _manualKeysTargetHit = true;
+
+    private readonly HashSet<int> _manualProcessedHitSteps = new HashSet<int>();
+    private readonly HashSet<int> _manualPreparedHitSteps = new HashSet<int>();
+    private int _manualCycleBaseStep = -1;
+    private int _manualAnchorStep = -1;
+    private int _manualCycle = -1;
 
     [Space(15)]
     [Header("Escalonamento por Estagio")]
@@ -111,31 +136,54 @@ public class EnemyManager : MonoBehaviour
         new() { stage = MusicStage.Failed_Anticipation},
         new() { stage = MusicStage.Other}
     };
-    // VARI¡VEIS OCULTAS
-    // ReferÍncias
+    // VARI√ÅVEIS OCULTAS
+    // Refer√™ncias
         [HideInInspector]
     public PlayerTargeting playerTargeting;
     private WaveManager _waveManager;
 
-    // P˙blicas
+    // P√∫blicas
     //    [HideInInspector]
     public bool automaticAttackManagement = true;
 
         [HideInInspector]
     public List<Enemy> activeEnemies { get; private set; } = new List<Enemy>();
 
+    private int BreakFlowLaneClearLeadTicks =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneClearLeadTicks : 1;
+    private float BreakFlowLaneHalfWidth =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneHalfWidth : 2.5f;
+    private float BreakFlowLaneMargin =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneMargin : 0.75f;
+    private float BreakFlowLaneNavSampleRadius =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneNavSampleRadius : 2f;
+    private float BreakFlowLanePushStunTicks =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LanePushStunTicks : 2f;
+    private Color BreakFlowLaneColor =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneColor : new Color(1f, 0.32f, 0.18f, 1f);
+    private float BreakFlowLaneVisualWidth =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneVisualWidth : 0.15f;
+    private float BreakFlowLaneVisualDuration =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneVisualDuration : 0.25f;
+    private GameObject BreakFlowLaneParticlePrefab =>
+        _breakFlowBarrier != null ? _breakFlowBarrier.LaneParticlePrefab : null;
+    private bool BreakFlowLaneParticlesScaleToLine =>
+        _breakFlowBarrier != null && _breakFlowBarrier.LaneParticlesScaleToLine;
+    private bool DrawBreakFlowLaneGizmos =>
+        _breakFlowBarrier != null && _breakFlowBarrier.DrawLaneGizmos;
+
         // Lista Inimigos
         [HideInInspector]
     private List<Enemy> enemies = new List<Enemy>();
 
-        // ProgramaÁ„o Ataques 
+        // Programa√ß√£o Ataques
     private readonly Dictionary<int, List<EnemySchedule>> _attackHitSchedule = new Dictionary<int, List<EnemySchedule>>();
 
     private readonly Dictionary<int, List<EnemySchedule>> _enemyReadySchedule = new Dictionary<int, List<EnemySchedule>> ();
 
     private readonly Dictionary<int, List<EnemySchedule>> _enemyMoveSchedule = new Dictionary<int, List<EnemySchedule>>();
 
-        // C·lculo
+        // C√°lculo
     private float _attackOdd = 0f;
     private int _stepsNoAttack = 0;
 
@@ -143,10 +191,13 @@ public class EnemyManager : MonoBehaviour
     private EnemyTypes _pendingEnemyType = EnemyTypes.Any;
     private AttackType _pendingAttackType = null;
     private bool _pendingForce = false;
+    private int _pendingStep = int.MinValue;
+    private int _pendingMoveStep = 0;
+    private bool _pendingHitAtStep = false;
 
-        [UnityEngine.Range(0f, 1f), Tooltip("O qu„o prov·vel È que um beat seja escolhido para ter um ataque")]
+        [UnityEngine.Range(0f, 1f), Tooltip("O qu√£o prov√°vel √© que um beat seja escolhido para ter um ataque")]
     private float _attackAggressiviness = 0.1f;
-        [UnityEngine.Range(0f, 1f), Tooltip("Quanto a probabilidade de um ataque acontecer aumenta quando um ataque n„o ocorre")]
+        [UnityEngine.Range(0f, 1f), Tooltip("Quanto a probabilidade de um ataque acontecer aumenta quando um ataque n√£o ocorre")]
     private float _aggressivenessIncrease = 0.05f;
 
 
@@ -159,23 +210,37 @@ public class EnemyManager : MonoBehaviour
 
     private readonly Dictionary<EnemyTypes, float> _typeWeights = new Dictionary<EnemyTypes, float>();
 
+    private bool _tutorialMode = false;
+
+        // BreakFlow
+    private Enemy _breakFlowEnemy;
+    private int _breakFlowAttackIndex = -1;
+    private int _breakFlowAttackStep = -1;
+    private bool _breakFlowPending = false;
+    private bool _breakFlowLaneClearDone = false;
+    [SerializeField]
+    private BreakFlowEffect _breakFlowEffect;
+
     #endregion
 
-    #region FunÁıes Unity
+    #region Fun√ß√µes Unity
     /* - - - - -
      * Adiciona todos os inimigos
      * - - - - - */
     private void Start()
     {
-            //AdiÁ„o dos inimigos lista
-        Enemy[] i_activeEnemies = transform.GetComponentsInChildren<Enemy>();
+            //Adi√ß√£o dos inimigos lista
+        Enemy[] i_activeEnemies = transform.GetComponentsInChildren<Enemy>(true);
 
         foreach (Enemy i_activeEnemy in i_activeEnemies)
         {
+            if (i_activeEnemy == null || !i_activeEnemy.gameObject.activeInHierarchy)
+                continue;
+
             AddActiveEnemy(i_activeEnemy);
         }
 
-            // Preparo C·lculo
+            // Preparo C√°lculo
         _attackOdd = _attackAggressiviness;
 
             // Pool de spawn (mesmo objeto)
@@ -195,16 +260,19 @@ public class EnemyManager : MonoBehaviour
     /* - - - - -
      * Calcula um ataque para o beat especificado.
      * 
-     * Esse beat È convertido para steps para contabilizar por halfbeats.
-     * … possÌvel especificar o tipo de inimigo e o tipo de ataque.
+     * Esse beat √© convertido para steps para contabilizar por halfbeats.
+     * √â poss√≠vel especificar o tipo de inimigo e o tipo de ataque.
      * 
-     * … possÌvel forÁar um ataque ‡ acontecer.
+     * √â poss√≠vel for√ßar um ataque √† acontecer.
      * - - - - - */
     private void CalculateAttack(
         float i_beatFull = -1,
         EnemyTypes i_enemyType = EnemyTypes.Any,
         AttackType i_attackType = null,
-        bool i_force = false)
+        bool i_force = false,
+        int i_forceMoveStep = 0,
+        bool i_hitAtStep = false,
+        int i_stepOverride = int.MinValue)
     {
         if(i_beatFull == -1)
             i_beatFull = TickManager.tickInfo.beatFullCount + 1f + _thinkAheadTime;
@@ -215,9 +283,11 @@ public class EnemyManager : MonoBehaviour
             return;
         }
 
-        int i_step = Mathf.RoundToInt(i_beatFull * 2f);
+        int i_step = i_stepOverride != int.MinValue
+            ? i_stepOverride
+            : Mathf.RoundToInt(i_beatFull * 2f);
 
-        // J· foi claculado, n„o foi forÁado e est· acima do limite
+        // J√° foi claculado, n√£o foi for√ßado e est√° acima do limite
         if (_attackHitSchedule.TryGetValue(i_step, out List<EnemySchedule> i_enemySchedules) && !i_force)
         {
             //Debug.Log(
@@ -247,7 +317,9 @@ public class EnemyManager : MonoBehaviour
                 i_step,
                 i_enemyType,
                 i_attackType,
-                i_force) != null)
+                i_force,
+                i_forceMoveStep,
+                i_hitAtStep) != null)
             {
                 _attackOdd = _attackAggressiviness;
                 _stepsNoAttack = 0;
@@ -273,13 +345,15 @@ public class EnemyManager : MonoBehaviour
         EnemyTypes i_enemyType = EnemyTypes.Any,
         AttackType i_attackType = null,
         bool i_force = false,
-        int i_forceMoveStep = 0)
+        int i_forceMoveStep = 0,
+        bool i_hitAtStep = false)
     {
-        // Sem inimigos disponÌveis
+        // Sem inimigos dispon√≠veis
         if (activeEnemies.Count == 0)
         {
                 // Spawna inimigo
-            RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+            RequestAttackAvailability(
+                i_enemyType, i_attackType, i_force, i_step, i_hitAtStep, i_forceMoveStep);
 
             return null;
         }
@@ -290,7 +364,7 @@ public class EnemyManager : MonoBehaviour
                 return null;
         }
 
-        // Procura inimigo v·lido
+        // Procura inimigo v√°lido
         List<Enemy> i_availableEnemies = new List<Enemy>();
 
         foreach (Enemy i_enemy in activeEnemies)
@@ -305,22 +379,26 @@ public class EnemyManager : MonoBehaviour
                 continue;
             }
 
-            // Inimigo n„o stunado
-            if (!i_enemy.readyForAttack)
+            if (!i_enemy.readyForAttack ||
+                i_enemy.attack == null ||
+                i_enemy.attack.currentAttack != null)
+            {
                 continue;
+            }
 
             i_availableEnemies.Add(i_enemy);
         }
 
-        // Spawna inimigo se nenhum disponÌvel
+        // Spawna inimigo se nenhum dispon√≠vel
         if (i_availableEnemies.Count == 0)
         {
-            RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+            RequestAttackAvailability(
+                i_enemyType, i_attackType, i_force, i_step, i_hitAtStep, i_forceMoveStep);
 
             return null;
         }
 
-        // Escolhe um dos inimigos disponÌveis
+        // Escolhe um dos inimigos dispon√≠veis
         Enemy i_selectedEnemy;
 
         // Seleciona apenas aqueles que possuem o ataque
@@ -335,7 +413,8 @@ public class EnemyManager : MonoBehaviour
             // Spawna se nenhum
             if (i_availableEnemies.Count == 0)
             {
-                RequestAttackAvailability(i_enemyType, i_attackType, i_force);
+                RequestAttackAvailability(
+                    i_enemyType, i_attackType, i_force, i_step, i_hitAtStep, i_forceMoveStep);
 
                 return null;
             }
@@ -348,16 +427,33 @@ public class EnemyManager : MonoBehaviour
 
         if (i_attackType == null)
         {
-            // Ataque aleatÛrio
-            if (i_selectedEnemy.attack.attacks.Length <= 0)
+            if (i_selectedEnemy.attack.attacks == null ||
+                i_selectedEnemy.attack.attacks.Length <= 0)
+            {
+                return null;
+            }
+
+            List<int> i_availableAttacks = new List<int>();
+
+            for (int i = 0; i < i_selectedEnemy.attack.attacks.Length; i++)
+            {
+                AttackType i_candidate = i_selectedEnemy.attack.attacks[i];
+
+                if (i_candidate == null || i_candidate == _breakFlowAttackType)
+                    continue;
+
+                i_availableAttacks.Add(i);
+            }
+
+            if (i_availableAttacks.Count == 0)
                 return null;
 
-            i_attackIndex =
-                UnityEngine.Random.Range(0, i_selectedEnemy.attack.attacks.Length);
+            i_attackIndex = i_availableAttacks[
+                UnityEngine.Random.Range(0, i_availableAttacks.Count)];
         }
         else
         {
-            // Ataque especÌfico
+            // Ataque espec√≠fico
             i_attackIndex = i_selectedEnemy.GetAttackIndex(i_attackType);
 
             if (i_attackIndex < 0)
@@ -372,16 +468,20 @@ public class EnemyManager : MonoBehaviour
             return null;
 
 
-        // VerificaÁ„o Hits =-=-=-=-=-=
+        // Verifica√ß√£o Hits =-=-=-=-=-=
 
         int i_moveStep;
         int i_attackStep;
+
+        int i_hitOffsetSteps = i_hitAtStep
+            ? GetManualHitOffsetSteps(i_selectedEnemy.attack.attacks[i_attackIndex])
+            : 0;
 
         if (i_forceMoveStep == -1)
         {
                 // Sem andar: ataca neste mesmo tick
             i_moveStep = -1;
-            i_attackStep = i_step;
+            i_attackStep = i_step - i_hitOffsetSteps;
         }
         else
         {
@@ -393,9 +493,14 @@ public class EnemyManager : MonoBehaviour
                 (UnityEngine.Random.Range(2, _moveAheadTime + 1) * 2);
         }
 
+        if (i_hitAtStep && i_attackStep < GetCurrentAnalysisStep())
+            return null;
+
         for (int i = 0; i < i_hitTimings.Length; i++)
         {
-            int i_hitStep = i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
+            int i_hitStep = i_hitAtStep
+                ? i_step + Mathf.RoundToInt((i_hitTimings[i] - i_hitTimings[0]) * 2f)
+                : i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
 
             // Se hits acima do limite
             if (_attackHitSchedule.TryGetValue(i_hitStep, out List<EnemySchedule> i_hitSchedule))
@@ -409,7 +514,9 @@ public class EnemyManager : MonoBehaviour
 
         for (int i = 0; i < i_hitTimings.Length; i++)
         {
-            int i_hitStep = i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
+            int i_hitStep = i_hitAtStep
+                ? i_step + Mathf.RoundToInt((i_hitTimings[i] - i_hitTimings[0]) * 2f)
+                : i_attackStep + Mathf.RoundToInt(i_hitTimings[i] * 2f);
 
             EnemySchedule i_schedule = new EnemySchedule
             {
@@ -443,7 +550,7 @@ public class EnemyManager : MonoBehaviour
             moveStep = i_moveStep
         };
 
-        // Registro ComeÁo ataque =-=-=-=-=-=
+        // Registro Come√ßo ataque =-=-=-=-=-=
         EditDictionary(
             _enemyReadySchedule,
             i_attackStep,
@@ -466,14 +573,208 @@ public class EnemyManager : MonoBehaviour
         return i_readySchedule;
     }
 
+
+    private bool IsManualScheduleActive()
+    {
+        if (!automaticAttackManagement)
+            return true;
+
+        if (!_manualScheduleOnClimax)
+            return false;
+
+        if (Composer.instance == null || Composer.instance.stage != MusicStage.Climax)
+            return false;
+
+        SerializableDictionary<int, List<EnemySchedule>> i_cycle =
+            GetManualScheduleCycle(GameManager.cycle);
+
+        return i_cycle != null && i_cycle.Count > 0;
+    }
+
+    private bool IsManualScheduleIncoming()
+    {
+        if (!automaticAttackManagement || !_manualScheduleOnClimax)
+            return false;
+
+        if (Composer.instance == null ||
+            Composer.instance.stage != MusicStage.Final_Anticipation)
+        {
+            return false;
+        }
+
+        SerializableDictionary<int, List<EnemySchedule>> i_cycle =
+            GetManualScheduleCycle(GameManager.cycle);
+
+        return i_cycle != null && i_cycle.Count > 0;
+    }
+
+    private void ManualScheduleTick(float i_beatToAnalyse)
+    {
+        if (!IsManualScheduleActive())
+        {
+            ResetManualScheduleState();
+            return;
+        }
+
+        int i_analysisStep = Mathf.RoundToInt(i_beatToAnalyse * 2f);
+        int i_cycle = Mathf.Clamp(GameManager.cycle, 1, 3);
+
+        if (_manualCycle != i_cycle)
+        {
+            _manualCycle = i_cycle;
+            ResetManualScheduleState();
+        }
+
+        if (Composer.instance == null || Composer.instance.stage != MusicStage.Climax)
+            return;
+
+        int i_anchorStep = Composer.instance.climaxStartStep;
+
+        if (i_anchorStep < 0)
+            return;
+
+        if (_manualCycleBaseStep < 0 || _manualAnchorStep != i_anchorStep)
+        {
+            _manualAnchorStep = i_anchorStep;
+            _manualCycleBaseStep = i_anchorStep + _thinkAheadTime * 2;
+            _manualProcessedHitSteps.Clear();
+            _manualPreparedHitSteps.Clear();
+        }
+
+        SerializableDictionary<int, List<EnemySchedule>> i_manualCycle =
+            GetManualScheduleCycle(i_cycle);
+
+        if (i_manualCycle == null || i_manualCycle.Count == 0)
+            return;
+
+        List<KeyValuePair<int, List<EnemySchedule>>> i_entries =
+            new List<KeyValuePair<int, List<EnemySchedule>>>(i_manualCycle);
+        i_entries.Sort((i_a, i_b) => i_a.Key.CompareTo(i_b.Key));
+
+        foreach (KeyValuePair<int, List<EnemySchedule>> i_cycleEntry in i_entries)
+        {
+            if (i_cycleEntry.Value == null)
+                continue;
+
+            int i_hitStep = _manualCycleBaseStep + i_cycleEntry.Key;
+
+            if (_manualProcessedHitSteps.Contains(i_hitStep))
+                continue;
+
+            int i_maxHitOffset = 0;
+
+            if (_manualKeysTargetHit)
+            {
+                foreach (EnemySchedule i_template in i_cycleEntry.Value)
+                    i_maxHitOffset = Mathf.Max(
+                        i_maxHitOffset,
+                        GetManualHitOffsetSteps(i_template.attackType));
+            }
+
+            int i_triggerStep = i_hitStep - i_maxHitOffset;
+
+            if (i_triggerStep - i_analysisStep <= _thinkAheadTime * 2 &&
+                _manualPreparedHitSteps.Add(i_hitStep))
+            {
+                foreach (EnemySchedule i_template in i_cycleEntry.Value)
+                {
+                    if (_waveManager != null)
+                        _waveManager.EnsureAttackAvailability(i_template.attackType);
+                }
+            }
+
+            if (i_triggerStep > i_analysisStep)
+                continue;
+
+            if (i_triggerStep < i_analysisStep)
+            {
+#if UNITY_EDITOR
+                Debug.LogWarning(
+                    $"Manual Schedule: Key {i_cycleEntry.Key} ignorado; " +
+                    "o ataque precisaria come√ßar antes do Cl√≠max.");
+#endif
+                _manualProcessedHitSteps.Add(i_hitStep);
+                continue;
+            }
+
+            foreach (EnemySchedule i_template in i_cycleEntry.Value)
+            {
+                CalculateAttack(
+                    i_hitStep / 2f,
+                    i_template.enemyType,
+                    i_template.attackType,
+                    true,
+                    -1,
+                    _manualKeysTargetHit,
+                    i_hitStep);
+            }
+
+            _manualProcessedHitSteps.Add(i_hitStep);
+        }
+    }
+
+    private int GetManualHitOffsetSteps(AttackType i_attackType)
+    {
+        if (!_manualKeysTargetHit || i_attackType == null)
+            return 0;
+
+        float i_tickDuration = (float)TickManager.tickInfo.tickDuration;
+
+        if (i_tickDuration <= 0f)
+            return 0;
+
+        float i_hitBeats = i_attackType.FirstHitTiming(false) / i_tickDuration;
+
+        return Mathf.RoundToInt(i_hitBeats * 2f);
+    }
+
+    private int GetCurrentAnalysisStep()
+    {
+        int i_step = Mathf.RoundToInt(TickManager.tickInfo.beatFullCount * 2f);
+
+        if (TickManager.tickInfo.type == TickType.HalfTick)
+            i_step++;
+
+        return i_step + _thinkAheadTime * 2;
+    }
+
+    private SerializableDictionary<int, List<EnemySchedule>> GetManualScheduleCycle(int i_cycle)
+    {
+        SerializableDictionary<int, List<EnemySchedule>> i_selected;
+
+        switch (i_cycle)
+        {
+            case 2:
+                i_selected = _ManualScheduleCycle2;
+                break;
+            case 3:
+                i_selected = _ManualScheduleCycle3;
+                break;
+            default:
+                i_selected = _ManualScheduleCycle1;
+                break;
+        }
+
+        if (_manualFallbackToCycle1 &&
+            (i_selected == null || i_selected.Count == 0))
+        {
+            return _ManualScheduleCycle1;
+        }
+
+        return i_selected;
+    }
+
     /* - - - - -
      * Requisita o spawn de um inimigo novo capaz de usar esse ataque.
-     * O agendamento È salvo para tentar agendar novamente no prÛximo tick.
+     * O agendamento √© salvo para tentar agendar novamente no pr√≥ximo tick.
      * - - - - - */
     private void RequestAttackAvailability(
         EnemyTypes i_enemyType,
         AttackType i_attackType,
-        bool i_force)
+        bool i_force,
+        int i_step = int.MinValue,
+        bool i_hitAtStep = false,
+        int i_forceMoveStep = 0)
     {
         if (i_attackType == null)
             return;
@@ -484,23 +785,50 @@ public class EnemyManager : MonoBehaviour
         _pendingEnemyType = i_enemyType;
         _pendingAttackType = i_attackType;
         _pendingForce = i_force;
+        _pendingStep = i_step;
+        _pendingMoveStep = i_forceMoveStep;
+        _pendingHitAtStep = i_hitAtStep;
     }
 
     /* - - - - -
-     * Tenta agendar novamente o ataque apÛs o spawn de um inimigo.
+     * Tenta agendar novamente o ataque ap√≥s o spawn de um inimigo.
      * - - - - - */
     private void RetryPendingSchedule(float i_beatFull)
     {
         if (_pendingAttackType == null)
             return;
 
-        if (ScheduleAttack(
-            Mathf.RoundToInt(i_beatFull * 2f),
-            _pendingEnemyType,
-            _pendingAttackType,
-            _pendingForce) != null)
+        int i_currentAnalysisStep = Mathf.RoundToInt(i_beatFull * 2f);
+        int i_targetStep = _pendingForce && _pendingStep != int.MinValue
+            ? _pendingStep
+            : i_currentAnalysisStep;
+
+        if (_pendingHitAtStep && i_targetStep < i_currentAnalysisStep)
         {
             _pendingAttackType = null;
+            _pendingStep = int.MinValue;
+            _pendingMoveStep = 0;
+            _pendingHitAtStep = false;
+            return;
+        }
+
+        int i_forceMoveStep = _pendingHitAtStep ? -1 : _pendingMoveStep;
+
+        if (ScheduleAttack(
+            i_targetStep,
+            _pendingEnemyType,
+            _pendingAttackType,
+            _pendingForce,
+            i_forceMoveStep,
+            _pendingHitAtStep) != null)
+        {
+            if (_pendingHitAtStep)
+                _manualProcessedHitSteps.Add(i_targetStep);
+
+            _pendingAttackType = null;
+            _pendingStep = int.MinValue;
+            _pendingMoveStep = 0;
+            _pendingHitAtStep = false;
         }
     }
 
@@ -602,7 +930,7 @@ public class EnemyManager : MonoBehaviour
     }
 
     /* - - - - -
-     * Edita o dicion·rio, adicionando apenas um EnemySchedule
+     * Edita o dicion√°rio, adicionando apenas um EnemySchedule
      * - - - - - */
     private void EditDictionary(Dictionary<int, List<EnemySchedule>> i_dict, int i_step, EnemySchedule i_schedule, bool i_replace = true)
     {
@@ -625,7 +953,7 @@ public class EnemyManager : MonoBehaviour
     }
 
     /* - - - - -
-     * Edita o Dicion·rio, adicionando uma lista de EnemySchedule extra
+     * Edita o Dicion√°rio, adicionando uma lista de EnemySchedule extra
      * - - - - - */
     private void EditDictionary(Dictionary<int, List<EnemySchedule>> i_dict, int i_step, List<EnemySchedule> i_schedule)
     {
@@ -651,13 +979,18 @@ public class EnemyManager : MonoBehaviour
         // Movimento
 
         if (_enemyMoveSchedule.TryGetValue(i_step, out List<EnemySchedule> i_movementSchedules))
+        {
+            _enemyMoveSchedule.Remove(i_step);
+
             for (int i = i_movementSchedules.Count - 1; i >= 0; i--)
             {
                 EnemySchedule i_schedule = i_movementSchedules[i];
 
-                if (!i_schedule.enemy.readyForAttack)
+                if (!i_schedule.enemy.readyForAttack ||
+                    i_schedule.enemy.attack == null ||
+                    i_schedule.enemy.attack.currentAttack != null)
                 {
-                    _enemyMoveSchedule[i_step].RemoveAt(i);
+                    i_movementSchedules.RemoveAt(i);
 
                     RemoveSchedule(i_schedule);
 
@@ -677,17 +1010,24 @@ public class EnemyManager : MonoBehaviour
 
                 i_schedule.enemy.WalkToPlayer(i_schedule.attackType.GetHits()[0].DashMaxDistance/4);
             }
+        }
 
         // Ataque
 
         if (_enemyReadySchedule.TryGetValue(i_step, out List<EnemySchedule> i_attackSchedules))
+        {
+            _enemyReadySchedule.Remove(i_step);
+
             for (int i = i_attackSchedules.Count - 1; i >= 0; i--)
             {
                 EnemySchedule i_schedule = i_attackSchedules[i];
 
-                if (!i_schedule.enemy.readyForAttack)
+                if (!i_schedule.enemy.readyForAttack ||
+                    i_schedule.enemy.attack == null ||
+                    i_schedule.enemy.attack.currentAttack != null ||
+                    !activeEnemies.Contains(i_schedule.enemy))
                 {
-                    _enemyReadySchedule[i_step].RemoveAt(i);
+                    i_attackSchedules.RemoveAt(i);
 
                     RemoveSchedule(i_schedule);
 
@@ -710,10 +1050,407 @@ public class EnemyManager : MonoBehaviour
 
                 i_schedule.enemy.StartAttack(i_schedule.attackIndex);
             }
+        }
+    }
+
+    public bool ScheduleBreakFlow(Enemy i_enemy, int i_hitTick)
+    {
+        if (i_enemy == null || _breakFlowAttackType == null ||
+            !i_enemy.gameObject.activeInHierarchy)
+            return false;
+
+        int i_attackIndex = i_enemy.GetAttackIndex(_breakFlowAttackType);
+
+        if (i_attackIndex < 0)
+            return false;
+
+        if (i_enemy.attack == null)
+            return false;
+
+        float[] i_hitTimings = i_enemy.attack.FirstHitTiming(i_attackIndex, true);
+
+        if (i_hitTimings == null || i_hitTimings.Length == 0)
+            return false;
+
+        int i_hitStep = i_hitTick * 2;
+        int i_firstHitOffset = Mathf.RoundToInt(i_hitTimings[0] * 2f);
+        int i_attackStep = i_hitStep - i_firstHitOffset;
+        int i_currentStep = Mathf.RoundToInt(TickManager.tickInfo.beatFullCount * 2f);
+
+        if (i_attackStep < i_currentStep)
+        {
+            Debug.LogWarning(
+                $"EnemyManager: o ataque do BreakFlow come√ßaria no step {i_attackStep}, " +
+                $"mas o step atual √© {i_currentStep}. Iniciando imediatamente.");
+
+            i_attackStep = i_currentStep;
+        }
+
+        CancelBreakFlowSchedule();
+
+        _breakFlowEnemy = i_enemy;
+        _breakFlowAttackIndex = i_attackIndex;
+        _breakFlowAttackStep = i_attackStep;
+        _breakFlowPending = true;
+        _breakFlowLaneClearDone = false;
+
+        Vector3 i_breakFlowAnchor = i_enemy.transform.position;
+        float i_barrierRadius = _breakFlowBarrier != null
+            ? _breakFlowBarrier.BarrierRadius
+            : 3.5f;
+
+        PushPlayerOutOfBreakFlow(
+            i_breakFlowAnchor,
+            i_barrierRadius);
+
+        i_enemy.transform.position = i_breakFlowAnchor;
+
+        if (_breakFlowEffect == null)
+        {
+            Debug.LogError("EnemyManager: BreakFlowEffect n√£o atribu√≠do na cena.");
+            return false;
+        }
+
+        _breakFlowEffect.SetBarrier(_breakFlowBarrier);
+        _breakFlowEffect.Begin(i_enemy, i_barrierRadius);
+        TryClearBreakFlowLane(i_currentStep);
+
+        if (i_attackStep <= i_currentStep)
+        {
+            TryStartBreakFlow(i_currentStep);
+
+            if (_breakFlowAttackIndex < 0)
+                return false;
+        }
+
+        return true;
+    }
+
+    private void TryClearBreakFlowLane(int i_currentStep)
+    {
+        if (!_breakFlowPending || _breakFlowLaneClearDone)
+            return;
+
+        if (_breakFlowAttackStep < 0)
+            return;
+
+        int i_leadSteps = Mathf.Max(
+            0,
+            Mathf.RoundToInt(BreakFlowLaneClearLeadTicks * 2f));
+
+        int i_clearStep = Mathf.Max(0, _breakFlowAttackStep - i_leadSteps);
+
+        if (i_currentStep < i_clearStep)
+            return;
+
+        ClearBreakFlowLane();
+    }
+
+    private void ClearBreakFlowLane(bool i_force = false)
+    {
+        if (_breakFlowLaneClearDone && !i_force)
+            return;
+
+        _breakFlowLaneClearDone = true;
+
+        if (_breakFlowEnemy == null)
+            return;
+
+        PlayerController i_player = GameManager.instance != null
+            ? GameManager.instance.playerController
+            : GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerController>();
+
+        if (i_player == null)
+            return;
+
+        Vector3 i_start = _breakFlowEnemy.transform.position;
+        Vector3 i_end = i_player.transform.position;
+
+        Vector3 i_direction = i_end - i_start;
+        i_direction.y = 0f;
+
+        float i_length = i_direction.magnitude;
+
+        if (i_length <= 0.01f)
+            return;
+
+        Vector3 i_forward = i_direction / i_length;
+        Vector3 i_right = Vector3.Cross(Vector3.up, i_forward).normalized;
+
+        if (_breakFlowEffect != null)
+        {
+            _breakFlowEffect.SpawnLane(
+                i_start + Vector3.up * 0.05f,
+                i_end + Vector3.up * 0.05f,
+                BreakFlowLaneColor,
+                BreakFlowLaneVisualWidth,
+                BreakFlowLaneVisualDuration,
+                BreakFlowLaneParticlePrefab,
+                BreakFlowLaneParticlesScaleToLine);
+        }
+
+        int i_pushedCount = 0;
+        List<Enemy> i_pushedEnemies = new List<Enemy>();
+
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            Enemy i_enemy = activeEnemies[i];
+
+            if (i_enemy == null || !i_enemy.gameObject.activeInHierarchy)
+                continue;
+
+            if (i_enemy == _breakFlowEnemy)
+                continue;
+
+            Vector3 i_offset = i_enemy.transform.position - i_start;
+            i_offset.y = 0f;
+
+            float i_along = Vector3.Dot(i_offset, i_forward);
+
+            if (i_along < -BreakFlowLaneMargin ||
+                i_along > i_length + BreakFlowLaneMargin)
+            {
+                continue;
+            }
+
+            Vector3 i_perpendicular = i_offset - i_forward * i_along;
+            float i_distance = i_perpendicular.magnitude;
+
+            if (i_distance > BreakFlowLaneHalfWidth)
+                continue;
+
+            float i_side = Mathf.Sign(Vector3.Dot(i_perpendicular, i_right));
+
+            if (Mathf.Abs(i_side) < 0.01f)
+                i_side = 1f;
+
+            float i_push = BreakFlowLaneHalfWidth + BreakFlowLaneMargin - i_distance;
+
+            if (i_push <= 0f)
+                continue;
+
+            Vector3 i_target =
+                i_enemy.transform.position + i_right * i_side * i_push;
+
+            bool i_pushed = TryWarpEnemy(i_enemy, i_target);
+
+            if (!i_pushed)
+            {
+                i_target =
+                    i_enemy.transform.position - i_right * i_side * i_push;
+
+                i_pushed = TryWarpEnemy(i_enemy, i_target);
+            }
+
+            if (!i_pushed)
+                continue;
+
+            i_enemy.ApplyPushStun(BreakFlowLanePushStunTicks);
+            AddPushedEnemy(i_pushedEnemies, i_enemy);
+            i_pushedCount++;
+        }
+
+        float i_barrierRadius = _breakFlowBarrier != null
+            ? _breakFlowBarrier.BarrierRadius
+            : 3.5f;
+
+        i_pushedCount += PushEnemiesOutOfBreakFlow(
+            i_start,
+            i_barrierRadius,
+            i_pushedEnemies);
+
+        i_pushedCount = i_pushedEnemies.Count;
+
+        Debug.Log(
+            $"BreakFlow lane: {i_pushedCount} inimigo(s) empurrado(s). " +
+            $"Meia-largura {BreakFlowLaneHalfWidth}, margem {BreakFlowLaneMargin}.");
+    }
+
+    private bool TryWarpEnemy(Enemy i_enemy, Vector3 i_target)
+    {
+        float i_sampleRadius = Mathf.Max(BreakFlowLaneNavSampleRadius, 4f);
+        Vector3 i_warpTarget = i_target;
+
+        if (NavMesh.SamplePosition(
+            i_target,
+            out NavMeshHit i_hit,
+            i_sampleRadius,
+            NavMesh.AllAreas))
+        {
+            i_warpTarget = i_hit.position;
+        }
+
+        NavMeshAgent i_agent = i_enemy.GetComponent<NavMeshAgent>();
+
+        if (i_agent != null && i_agent.enabled && i_agent.isOnNavMesh)
+        {
+            if (i_agent.Warp(i_warpTarget))
+            {
+                i_agent.ResetPath();
+                return true;
+            }
+
+            i_agent.enabled = false;
+            i_enemy.transform.position = i_warpTarget;
+            i_agent.enabled = true;
+
+            if (i_agent.isOnNavMesh)
+                i_agent.ResetPath();
+
+            return true;
+        }
+
+        i_enemy.transform.position = i_warpTarget;
+        return true;
+    }
+
+    private void OnDrawGizmosSelected()
+    {
+        if (!DrawBreakFlowLaneGizmos || _breakFlowEnemy == null)
+            return;
+
+        PlayerController i_player = GameManager.instance != null
+            ? GameManager.instance.playerController
+            : null;
+
+        if (i_player == null)
+            return;
+
+        Vector3 i_start = _breakFlowEnemy.transform.position;
+        Vector3 i_end = i_player.transform.position;
+
+        Vector3 i_direction = i_end - i_start;
+        i_direction.y = 0f;
+
+        float i_length = i_direction.magnitude;
+
+        if (i_length <= 0.01f)
+            return;
+
+        Vector3 i_forward = i_direction / i_length;
+        Vector3 i_right = Vector3.Cross(Vector3.up, i_forward).normalized;
+
+        Gizmos.color = BreakFlowLaneColor;
+        Gizmos.DrawLine(i_start, i_end);
+
+        Gizmos.color = Color.yellow;
+        Gizmos.DrawLine(
+            i_start + i_right * BreakFlowLaneHalfWidth,
+            i_end + i_right * BreakFlowLaneHalfWidth);
+        Gizmos.DrawLine(
+            i_start - i_right * BreakFlowLaneHalfWidth,
+            i_end - i_right * BreakFlowLaneHalfWidth);
+    }
+
+    private void PushPlayerOutOfBreakFlow(
+        Vector3 i_center,
+        float i_radius)
+    {
+        const float i_margin = 0.75f;
+
+        PlayerController i_player = GameManager.instance != null
+            ? GameManager.instance.playerController
+            : GameObject.FindGameObjectWithTag("Player").GetComponent<PlayerController>();
+
+        if (i_player != null)
+            i_player.PushOutOfBreakFlow(i_center, i_radius, i_margin);
+    }
+
+    private int PushEnemiesOutOfBreakFlow(
+        Vector3 i_center,
+        float i_radius,
+        List<Enemy> i_alreadyPushed)
+    {
+        const float i_margin = 0.75f;
+        float i_safeRadius = i_radius + i_margin;
+        int i_count = 0;
+
+        for (int i = activeEnemies.Count - 1; i >= 0; i--)
+        {
+            Enemy i_enemy = activeEnemies[i];
+
+            if (i_enemy == null || !i_enemy.gameObject.activeInHierarchy)
+                continue;
+
+            if (i_enemy == _breakFlowEnemy)
+                continue;
+
+            Vector3 i_delta = i_enemy.transform.position - i_center;
+            i_delta.y = 0f;
+
+            float i_distance = i_delta.magnitude;
+
+            if (i_distance >= i_safeRadius)
+                continue;
+
+            Vector3 i_direction = i_distance > 0.001f
+                ? i_delta / i_distance
+                : i_enemy.transform.forward;
+
+            Vector3 i_target = i_center + i_direction * i_safeRadius;
+
+            if (!TryWarpEnemy(i_enemy, i_target))
+                continue;
+
+            i_enemy.ApplyPushStun(BreakFlowLanePushStunTicks);
+            AddPushedEnemy(i_alreadyPushed, i_enemy);
+            i_count++;
+        }
+
+        return i_count;
+    }
+
+    private static void AddPushedEnemy(List<Enemy> i_list, Enemy i_enemy)
+    {
+        if (i_list != null && !i_list.Contains(i_enemy))
+            i_list.Add(i_enemy);
+    }
+
+    private void TryStartBreakFlow(int i_currentStep)
+    {
+        if (!_breakFlowPending)
+            return;
+
+        if (i_currentStep < _breakFlowAttackStep)
+            return;
+
+        if (_breakFlowEnemy == null || !activeEnemies.Contains(_breakFlowEnemy))
+        {
+            CancelBreakFlowSchedule();
+            return;
+        }
+
+        ClearBreakFlowLane(true);
+
+        _breakFlowPending = false;
+
+        if (_breakFlowEffect != null)
+            _breakFlowEffect.ReleaseNavigationForDash();
+
+        if (!_breakFlowEnemy.ForceStartAttack(_breakFlowAttackIndex))
+        {
+            Debug.LogWarning("EnemyManager: n√£o foi poss√≠vel iniciar o ataque do BreakFlow.");
+            CancelBreakFlowSchedule();
+        }
+    }
+
+    public void CancelBreakFlowSchedule()
+    {
+        _breakFlowPending = false;
+        _breakFlowLaneClearDone = false;
+        _breakFlowEnemy = null;
+        _breakFlowAttackIndex = -1;
+        _breakFlowAttackStep = -1;
+
+        if (_breakFlowEffect != null)
+        {
+            _breakFlowEffect.End();
+            _breakFlowEffect = null;
+        }
     }
     #endregion
 
-    #region FunÁıes P˙blicas
+    #region Fun√ß√µes P√∫blicas
     public void AddActiveEnemy(Enemy i_enemy)
     {
         activeEnemies.Add(i_enemy);
@@ -724,11 +1461,97 @@ public class EnemyManager : MonoBehaviour
     {
         activeEnemies.Remove(i_enemy);
 
-            // Morto nao cumpre mais agendamento
-        RemoveSchedulesFromEnemy(i_enemy);
+        if (_breakFlowEnemy == i_enemy)
+            CancelBreakFlowSchedule();
+
+        if (automaticAttackManagement)
+            RemoveSchedulesFromEnemy(i_enemy);
 
         if (i_targeting && playerTargeting)
             playerTargeting.GetNewTarget();
+    }
+
+    public void SetTutorialMode(bool i_enabled)
+    {
+        CancelBreakFlowSchedule();
+
+        _tutorialMode = i_enabled;
+        automaticAttackManagement = !i_enabled;
+        _pendingAttackType = null;
+        _pendingEnemyType = EnemyTypes.Any;
+        _pendingForce = false;
+        _pendingStep = int.MinValue;
+        _pendingMoveStep = 0;
+        _pendingHitAtStep = false;
+        ResetManualScheduleState();
+
+        _attackHitSchedule.Clear();
+        _enemyReadySchedule.Clear();
+        _enemyMoveSchedule.Clear();
+
+        if (i_enabled)
+        {
+            _attackOdd = 0f;
+            _stepsNoAttack = 0;
+        }
+        else
+        {
+            ResetScheduling();
+        }
+    }
+
+    public void ResetScheduling()
+    {
+        _attackHitSchedule.Clear();
+        _enemyReadySchedule.Clear();
+        _enemyMoveSchedule.Clear();
+
+        _attackOdd = _attackAggressiviness;
+        _stepsNoAttack = 0;
+        ResetManualScheduleState();
+        _manualCycle = -1;
+        _breakFlowLaneClearDone = false;
+        _pendingAttackType = null;
+        _pendingEnemyType = EnemyTypes.Any;
+        _pendingForce = false;
+        _pendingStep = int.MinValue;
+        _pendingMoveStep = 0;
+        _pendingHitAtStep = false;
+    }
+
+    private void ResetManualScheduleState()
+    {
+        _manualCycleBaseStep = -1;
+        _manualAnchorStep = -1;
+        _manualProcessedHitSteps.Clear();
+        _manualPreparedHitSteps.Clear();
+    }
+
+    public void KillAllEnemies()
+    {
+        CancelBreakFlowSchedule();
+
+        List<Enemy> i_enemies = new List<Enemy>(activeEnemies);
+
+        foreach (Enemy i_enemy in i_enemies)
+        {
+            if (i_enemy == null)
+                continue;
+
+            Status i_status = i_enemy.GetComponent<Status>();
+
+            if (i_status != null)
+            {
+                i_status.health = 0;
+                i_status.posture = 0;
+            }
+
+            i_enemy.Die();
+        }
+
+        _attackHitSchedule.Clear();
+        _enemyReadySchedule.Clear();
+        _enemyMoveSchedule.Clear();
     }
 
     public void SetAggressiveness(float i_aggressiveness, float i_increase)
@@ -839,6 +1662,27 @@ public class EnemyManager : MonoBehaviour
 
         return i_count;
     }
+
+    public int CountAvailableEnemiesWithAttack(AttackType i_attackType)
+    {
+        int i_count = 0;
+
+        foreach (Enemy i_enemy in activeEnemies)
+        {
+            if (i_enemy == null ||
+                !i_enemy.readyForAttack ||
+                i_enemy.attack == null ||
+                i_enemy.attack.currentAttack != null)
+            {
+                continue;
+            }
+
+            if (i_enemy.GetAttackIndex(i_attackType) >= 0)
+                i_count++;
+        }
+
+        return i_count;
+    }
     #endregion
 
     #region Timing
@@ -846,30 +1690,58 @@ public class EnemyManager : MonoBehaviour
 
     public void TickListener(TickInfo i_info)
     {
-        // An·lise dos beats =-=-=-=-=-=
+        int i_currentStep = Mathf.RoundToInt(i_info.beatFullCount * 2f);
+
+        if (_tutorialMode)
+        {
+            _enemyMoveSchedule.Clear();
+            _enemyReadySchedule.Clear();
+            _attackHitSchedule.Clear();
+
+            TryClearBreakFlowLane(i_currentStep);
+            TryStartBreakFlow(i_currentStep);
+            return;
+        }
+
+        // An√°lise dos beats =-=-=-=-=-=
 
         float i_beatToAnalyse = i_info.beatFullCount + _thinkAheadTime;
+        bool i_manualSchedule = IsManualScheduleActive();
+        bool i_manualIncoming = IsManualScheduleIncoming();
+        bool i_allowAutomatic = !i_manualSchedule && !i_manualIncoming;
 
         if (i_info.type == TickType.Tick)
         {
-            RetryPendingSchedule(i_beatToAnalyse);
+            if (i_allowAutomatic)
+                RetryPendingSchedule(i_beatToAnalyse);
 
-            Escalate();
-            CalculateAttack(i_beatToAnalyse);
+            if (i_allowAutomatic)
+            {
+                Escalate();
+                CalculateAttack(i_beatToAnalyse);
+            }
+
+            ManualScheduleTick(i_beatToAnalyse);
         }
 
         if (i_info.type == TickType.HalfTick)
         {
             i_beatToAnalyse += 0.5f;
 
-            RetryPendingSchedule(i_beatToAnalyse);
+            if (i_allowAutomatic)
+                RetryPendingSchedule(i_beatToAnalyse);
 
-            CalculateAttack(i_beatToAnalyse);
+            if (i_allowAutomatic)
+                CalculateAttack(i_beatToAnalyse);
+
+            ManualScheduleTick(i_beatToAnalyse);
         }
 
-        // ExecuÁ„o aÁıes =-=-=-=-=-=
+        // Execu√ß√£o a√ß√µes =-=-=-=-=-=
 
         StartExecution(i_beatToAnalyse);
+        TryClearBreakFlowLane(i_currentStep);
+        TryStartBreakFlow(i_currentStep);
 
         int i_step = Mathf.RoundToInt(i_info.beatFullCount * 2f);
 

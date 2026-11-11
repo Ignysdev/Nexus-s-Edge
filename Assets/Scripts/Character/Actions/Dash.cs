@@ -11,10 +11,10 @@ using UnityEngine.UIElements.Experimental;
 
 public class Dash : MonoBehaviour
 {
-    // VARI¡VEIS VISÕVEIS
+    // VARI√ÅVEIS VIS√çVEIS
     [Header("Movement Settings")]
         [SerializeField]
-    private float _dashDistance = 6f; // Dist„ncia padr„o
+    private float _dashDistance = 6f; // Dist√¢ncia padr√£o
         [SerializeField]
     private float _dashMinDistance = 3f;
         [SerializeField]
@@ -24,7 +24,7 @@ public class Dash : MonoBehaviour
 
     [Header("Time Settings")]
         [SerializeField]
-    private float _dashBeatDuration = .5f; // DuraÁ„o Padr„o
+    private float _dashBeatDuration = .5f; // Dura√ß√£o Padr√£o
 
     [Header("Other Settings")]
         [SerializeField]
@@ -34,15 +34,15 @@ public class Dash : MonoBehaviour
         [SerializeField, Range(-180,180)]
     private float[] _failOtherPosition;
 
-    // VARI¡VEIS OCULTAS
-        // ReferÍncias
+    // VARI√ÅVEIS OCULTAS
+        // Refer√™ncias
     private Transform _dashLocator;
     private CapsuleCollider _dashCollider;
     private Transform _dashFinalLocator;
     private SphereCollider _dashFinalCollider;
     private EnemyMovement _enemyMovement;
 
-        // DetecÁ„o
+        // Detec√ß√£o
     private Collider[] _sphereHits = new Collider[1];
 
     private Quaternion _targetRotation;
@@ -50,6 +50,17 @@ public class Dash : MonoBehaviour
         // Timing
         [HideInInspector]
     public bool dashing = false;
+
+    private void OnEnable()
+    {
+        dashing = false;
+    }
+
+    public void CancelDash()
+    {
+        StopAllCoroutines();
+        dashing = false;
+    }
 
     void Start()
     {
@@ -59,13 +70,13 @@ public class Dash : MonoBehaviour
         _enemyMovement = GetComponent<EnemyMovement>();
     }
 
-    #region P˙blicas
+    #region P√∫blicas
     /* - - - - -
-     * ExecuÁ„o do dash padr„o.
-     *  Escolhe se rotaciona o personagem junto ou n„o.
+     * Execu√ß√£o do dash padr√£o.
+     *  Escolhe se rotaciona o personagem junto ou n√£o.
      * 
-     * O Dash ser· executado imediatamente na dist‚ncia padr„o ou na mais prÛxima disponÌvel de acordo
-     * com as especificaÁıes do _failOtherPosition configurada no inspector.
+     * O Dash ser√° executado imediatamente na dist√¢ncia padr√£o ou na mais pr√≥xima dispon√≠vel de acordo
+     * com as especifica√ß√µes do _failOtherPosition configurada no inspector.
      * - - - - - */
     public bool OnDash(bool i_rotate = true, Ease i_ease = Ease.OutCirc)
     {
@@ -89,7 +100,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * ExecuÁ„o do OnDash com especificaÁ„o de onde olhar com a rotaÁ„o do personagem.
+     * Execu√ß√£o do OnDash com especifica√ß√£o de onde olhar com a rota√ß√£o do personagem.
      * - - - - - */
     public bool OnDash(Vector3 i_rotationTarget, Ease i_ease = Ease.OutCirc)
     {
@@ -116,12 +127,12 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Executa o dash atÈ a posiÁ„o especificada.
-     *  Escolher se rotaciona o personagem junto ou n„o.
-     *  Escolhe a duraÁ„o do dash.
-     *  Escolhe se ir· realizar a detecÁ„o para evitar colisıes ou n„o.
+     * Executa o dash at√© a posi√ß√£o especificada.
+     *  Escolher se rotaciona o personagem junto ou n√£o.
+     *  Escolhe a dura√ß√£o do dash.
+     *  Escolhe se ir√° realizar a detec√ß√£o para evitar colis√µes ou n√£o.
      *  
-     * Este dash È similar ao padr„o, porÈm ele ir· se mover atÈ a posiÁ„o especificada e possui
+     * Este dash √© similar ao padr√£o, por√©m ele ir√° se mover at√© a posi√ß√£o especificada e possui
      * uma customizabilidade maior.
      * - - - - - */
     public bool DashTo(Vector3 i_targetPosition, bool i_rotate = false, float i_duration = 0f, bool i_detect = false, Ease i_ease = Ease.OutCirc)
@@ -170,7 +181,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * ExecuÁ„o do DashTo com especificaÁ„o de onde olhar com a rotaÁ„o do personagem.
+     * Execu√ß√£o do DashTo com especifica√ß√£o de onde olhar com a rota√ß√£o do personagem.
      * - - - - - */
     public bool DashTo(Vector3 i_targetPosition, Vector3 i_rotationTarget, float i_duration = 0f, bool i_detect = false, Ease i_ease = Ease.OutCirc)
     {
@@ -224,7 +235,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * ExecuÁ„o do DashTo com especificaÁ„o de dist‚ncia ao invÈs de um local especÌfico.
+     * Execu√ß√£o do DashTo com especifica√ß√£o de dist√¢ncia ao inv√©s de um local espec√≠fico.
      * - - - - - */
     public bool DashTo(float i_distance, bool i_rotate, float i_duration = 0f, bool i_detect = false, Ease i_ease = Ease.OutCirc)
     {
@@ -234,8 +245,8 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * ExecuÁ„o do DashTo com especificaÁ„o de  dist‚ncia ao invÈs de um local especÌfico e
-     * de onde olhar com a rotaÁ„o do personagem.
+     * Execu√ß√£o do DashTo com especifica√ß√£o de  dist√¢ncia ao inv√©s de um local espec√≠fico e
+     * de onde olhar com a rota√ß√£o do personagem.
      * - - - - - */
     public bool DashTo(float i_distance, Vector3 i_rotationTarget, float i_duration = 0f, bool i_detect = false, Ease i_ease = Ease.OutCirc)
     {
@@ -245,23 +256,23 @@ public class Dash : MonoBehaviour
     }
     #endregion
 
-    #region DetecÁ„o de Colis„o
+    #region Detec√ß√£o de Colis√£o
     /* - - - - -
-     * Detecta se o dash vai ocasionar uma colis„o com um objeto. Tenta inicialmente a dist‚ncia padr„o e depois outras alternativas.
-     *  Retorna verdadeiro caso n„o exista colis„o.
-     *  Retorna falso em caso de colis„p. 
+     * Detecta se o dash vai ocasionar uma colis√£o com um objeto. Tenta inicialmente a dist√¢ncia padr√£o e depois outras alternativas.
+     *  Retorna verdadeiro caso n√£o exista colis√£o.
+     *  Retorna falso em caso de colis√£o.
      * - - - - - */
     private bool DashDetection()
     {
         _targetRotation = transform.rotation;
 
-        // Testa uma vez na dist‚ncia padr„o. Retorna verdadeiro se colidiu
+        // Testa uma vez na dist√¢ncia padr√£o. Retorna verdadeiro se colidiu
         if (SingleOverlap()) 
         {
-            // Testa colis„o com a esfera. Retorna verdadeiro se colidiu
+            // Testa colis√£o com a esfera. Retorna verdadeiro se colidiu
             if (StepsOverlap()) 
             {
-                // Tenta outras posiÁıes da esfera
+                // Tenta outras posi√ß√µes da esfera
                 if (DashTryOtherDirection())
                 {
                     return false;
@@ -285,7 +296,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * DetecÁ„o do Dash em apenas uma ˙nica posiÁ„o.
+     * Detec√ß√£o do Dash em apenas uma √∫nica posi√ß√£o.
      * - - - - - */
     private bool DashDetection(Vector3 i_position)
     {
@@ -300,9 +311,9 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Testa colis„o em diferentes posiÁıes predefinidas de colis„o da esfera.
-     *  Retorna verdadeiro caso haja colis„o.
-     *  Retorna falso caso n„o haja colis„o.
+     * Testa colis√£o em diferentes posi√ß√µes predefinidas de colis√£o da esfera.
+     *  Retorna verdadeiro caso haja colis√£o.
+     *  Retorna falso caso n√£o haja colis√£o.
      * - - - - - */
     private bool DashTryOtherDirection()
     {
@@ -348,9 +359,9 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Testa a colis„o na dist‚ncia predefinida padr„o.
-     *  Retorna verdadeiro caso haja colis„o.
-     *  Retorna falso caso n„o haja colis„o.
+     * Testa a colis√£o na dist√¢ncia predefinida padr√£o.
+     *  Retorna verdadeiro caso haja colis√£o.
+     *  Retorna falso caso n√£o haja colis√£o.
      * - - - - - */
     private bool SingleOverlap()
     {
@@ -372,7 +383,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Testa a colis„o na posiÁ„o.
+     * Testa a colis√£o na posi√ß√£o.
      * - - - - - */
     private bool SingleOverlap(Vector3 i_position)
     {
@@ -390,9 +401,9 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Testa a colis„o em frente ou atr·s da posiÁ„o ideal em etapas.
-     *  Retorna verdadeiro caso haja colis„o.
-     *  Retorna falso caso n„o haja colis„o.
+     * Testa a colis√£o em frente ou atr√°s da posi√ß√£o ideal em etapas.
+     *  Retorna verdadeiro caso haja colis√£o.
+     *  Retorna falso caso n√£o haja colis√£o.
      * - - - - - */
     private bool StepsOverlap()
     {
@@ -402,7 +413,7 @@ public class Dash : MonoBehaviour
 
         for (int i = 0; !i_success; i++)
         {
-            // Testa passos ‡ frente
+            // Testa passos √† frente
             if (i < _dashStepCount)
             {
                 i_steps = i + 1;
@@ -419,7 +430,7 @@ public class Dash : MonoBehaviour
                     _sphereHits,
                     _collisionLayer);
             }
-            // Testa passos atr·s
+            // Testa passos atr√°s
             else
             {
                 i_steps = i + 1 - _dashStepCount;
@@ -457,7 +468,7 @@ public class Dash : MonoBehaviour
     }
 
     /* - - - - -
-     * Aplica a dist‚ncia padr„o
+     * Aplica a dist√¢ncia padr√£o
      * - - - - - */
     public void SetDashDistance()
     {
@@ -469,10 +480,7 @@ public class Dash : MonoBehaviour
 
     #endregion
 
-    #region ExecuÁ„o
-    /* - - - - -
-     * ExecuÁ„o do Dash.
-     * - - - - - */
+    #region Execu√ß√£o
     IEnumerator ExecuteDash(float i_duration = 0, Ease i_ease = Ease.Unset)
     {
         if (i_ease == Ease.Unset)
@@ -483,18 +491,47 @@ public class Dash : MonoBehaviour
 
         float i_time = (float)TickManager.tickInfo.tickDuration * i_duration;
 
-        Tween i_dash = transform.DOMove(_dashFinalLocator.position, i_time).SetEase(i_ease);
+        if (float.IsNaN(i_time) || float.IsInfinity(i_time) || i_time <= 0f)
+        {
+            i_time = _dashBeatDuration * 0.5f;
+            Debug.LogWarning($"[Dash] {name}: tickDuration invalido. Usando {i_time:0.###}s.");
+        }
+
+        Vector3 i_start = transform.position;
+        Vector3 i_target = _dashFinalLocator.position;
+
+        if ((i_target - i_start).sqrMagnitude < 0.0001f)
+        {
+            Debug.LogWarning(
+                $"[Dash] {name}: o alvo do dash esta na posicao atual. " +
+                "Verifique DashLocator/DashFinalPosition no prefab.");
+        }
 
         if (_enemyMovement)
-            _enemyMovement.WalkTo(_dashFinalLocator.position);
+            _enemyMovement.WalkTo(i_target);
 
         dashing = true;
-        yield return i_dash.WaitForCompletion();
+
+        float i_elapsed = 0f;
+
+        while (i_elapsed < i_time)
+        {
+            i_elapsed += Time.deltaTime;
+
+            float i_normalized = Mathf.Clamp01(i_elapsed / i_time);
+            float i_eased = EvaluateEase(i_ease, i_normalized);
+
+            transform.position = Vector3.LerpUnclamped(i_start, i_target, i_eased);
+
+            yield return null;
+        }
+
+        transform.position = i_target;
         dashing = false;
     }
 
     /* - - - - -
-     * Rotaciona o alvo quando o Dash È executado.
+     * Rotaciona o alvo quando o Dash √© executado.
      * - - - - - */
     IEnumerator Rotate(Vector3 i_direction, float i_duration = 0, Ease i_ease = Ease.Unset)
     {
@@ -506,11 +543,61 @@ public class Dash : MonoBehaviour
 
         float i_time = (float)TickManager.tickInfo.tickDuration * i_duration;
 
-        transform.DORotate(i_direction, i_time).SetEase(i_ease);
+        if (float.IsNaN(i_time) || float.IsInfinity(i_time) || i_time <= 0f)
+            i_time = _dashBeatDuration * 0.5f;
 
-        //yield return i_rotate.WaitForCompletion();
+        Quaternion i_start = transform.rotation;
+        Quaternion i_target = Quaternion.Euler(i_direction);
 
-        yield return null;
+        float i_elapsed = 0f;
+
+        while (i_elapsed < i_time)
+        {
+            i_elapsed += Time.deltaTime;
+
+            float i_normalized = Mathf.Clamp01(i_elapsed / i_time);
+            float i_eased = EvaluateEase(i_ease, i_normalized);
+
+            transform.rotation = Quaternion.SlerpUnclamped(i_start, i_target, i_eased);
+
+            yield return null;
+        }
+
+        transform.rotation = i_target;
+    }
+
+    private static float EvaluateEase(Ease i_ease, float i_time)
+    {
+        i_time = Mathf.Clamp01(i_time);
+
+        switch (i_ease)
+        {
+            case Ease.Linear:
+                return i_time;
+
+            case Ease.InQuad:
+                return i_time * i_time;
+
+            case Ease.OutQuad:
+                return 1f - (1f - i_time) * (1f - i_time);
+
+            case Ease.InOutQuad:
+                return i_time < 0.5f
+                    ? 2f * i_time * i_time
+                    : 1f - Mathf.Pow(-2f * i_time + 2f, 2f) * 0.5f;
+
+            case Ease.InCirc:
+                return -(Mathf.Sqrt(1f - i_time * i_time) - 1f);
+
+            case Ease.InOutCirc:
+                return i_time < 0.5f
+                    ? (1f - Mathf.Sqrt(1f - Mathf.Pow(2f * i_time, 2f))) * 0.5f
+                    : (Mathf.Sqrt(1f - Mathf.Pow(-2f * i_time + 2f, 2f)) + 1f) * 0.5f;
+
+            case Ease.OutCirc:
+            default:
+                return Mathf.Sqrt(1f - Mathf.Pow(i_time - 1f, 2f));
+        }
     }
     #endregion
 }
@@ -561,7 +648,7 @@ using UnityEngine;
 
 public class Dash : MonoBehaviour
 {
-    // VARI¡VEIS VISÕVEIS
+    // VARI√ÅVEIS VIS√çVEIS
     [Header("Movement Settings")]
         [SerializeField]
     private float _dashDistance = 6f;
@@ -590,14 +677,14 @@ public class Dash : MonoBehaviour
         [SerializeField, Range(-180,180)]
     private float[] _failOtherPosition;
 
-    // VARI¡VEIS OCULTAS
-        // ReferÍncias
+    // VARI√ÅVEIS OCULTAS
+        // Refer√™ncias
     private Transform _dashLocator;
     private CapsuleCollider _dashCollider;
     private Transform _dashFinalLocator;
     private SphereCollider _dashFinalCollider;
 
-        // DetecÁ„o
+        // Detec√ß√£o
     private Vector3 _capsulePoint0;
     private Vector3 _capsulePoint1;
     private float _capsuleRadius;
@@ -766,7 +853,7 @@ public class Dash : MonoBehaviour
         {
             if (StepsOverlap())
             {
-                // DetecÁ„o Falha
+                // Detec√ß√£o Falha
                 if (_dashFailTryOther)
                 {
                     foreach (float i_direction in _failOtherPosition)
@@ -864,7 +951,7 @@ public class Dash : MonoBehaviour
 
         for (int i = 0; !i_success; i++)
         {
-            // AvanÁar
+            // Avan√ßar
             if (i < _dashStepCount)
             {
                 i_steps = i + 1;

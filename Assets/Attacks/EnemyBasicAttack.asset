@@ -17,12 +17,12 @@ MonoBehaviour:
     <PostureDamage>k__BackingField: 5
     <Heavy>k__BackingField: 0
     <KnockBackDistance>k__BackingField: 1
-    _duration: 4
+    _duration: 8
     <Hitbox>k__BackingField:
       <Type>k__BackingField: 0
       <LocalPosition>k__BackingField: {x: 0, y: 0, z: 2}
       <LocalRotation>k__BackingField: {x: 0, y: 0, z: 0}
-      <Size>k__BackingField: {x: 2, y: 1, z: 4}
+      <Size>k__BackingField: {x: 4, y: 1, z: 5}
       <Radius>k__BackingField: 0
     <HitboxTiming>k__BackingField: 0.75
     <HitboxDuration>k__BackingField: 0.5
@@ -36,3 +36,4 @@ MonoBehaviour:
     hitboxEnd: 0
     attackEnd: 0
     totalDuration: 0
+  _animatorTrigger: Attack

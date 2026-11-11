@@ -25,6 +25,10 @@ public class Composer : MonoBehaviour
         [SerializeField]
     private AudioController[] _dangerControllers;
 
+    [Header("Menu")]
+        [SerializeField, Tooltip("AudioController dedicado à música do menu. Pode ficar vazio enquanto não houver faixa.")]
+    private AudioController _menuController;
+
     [Header("Tutorial Controllers")]
         [SerializeField]
     private float _tutorialTimeToFade = 2.0f;
@@ -63,7 +67,7 @@ public class Composer : MonoBehaviour
     private int _timeToRepeatVar = 3;
         [SerializeField, Tooltip("Tempo em repetições antes de permitir uma troca para Variação comum novamente")]
     private int _timeInPassageToVarBeforeRepeat = 18;
-        [SerializeField, Tooltip("Flow máxima para a falha. Do menor para o maior, ambos inclusivos"), Range(0f, 100f)]
+        [SerializeField, Tooltip("Flow máxima para a variação. Do menor para o maior, ambos inclusivos"), Range(0f, 100f)]
     private float[] _FlowToVar = new float[2] { 40f, 60f };
 
     // VARIÁVEIS OCULTAS
@@ -73,9 +77,23 @@ public class Composer : MonoBehaviour
         // Informações
     public MusicStage stage;
 
+        [HideInInspector]
+    public int climaxStartStep { get; private set; } = -1;
+
+        // Menu / pausa
+    private bool _menuMode = true;
+    private bool _menuMusicStarted = false;
+    private bool _menuSwitchReady = false;
+    private bool _startGameRequested = false;
+    private bool _waitForGameStartBar = false;
+
+        [HideInInspector]
+    public bool paused { get; private set; } = false;
+
         // Timing
     private int _nextLastBeat;
     private int _nextLastBar;
+    private int _nextDecisionStartStep = -1;
 
         // BreakFlow
     private bool _breakFlowNext = false;
@@ -86,9 +104,6 @@ public class Composer : MonoBehaviour
     public bool breakFlowNext = false;
 
     private bool _fixBreak = false;
-
-        // Tutorial
-    private bool _tutorialBreak = false;
 
         // Timings
 
@@ -184,7 +199,130 @@ public class Composer : MonoBehaviour
      * - - - - - */
     private void Update()
     {
+        if (_menuMode || paused)
+            return;
+
         AuxBrain();
+
+        print(stage);
+    }
+    #endregion
+
+    #region Menu e Pausa
+    public void EnterMenu()
+    {
+        _menuMode = true;
+        _menuMusicStarted = false;
+        _menuSwitchReady = false;
+        _startGameRequested = false;
+        _waitForGameStartBar = false;
+        climaxStartStep = -1;
+
+        StopAllGameControllers();
+    }
+
+    public void SkipToClimax()
+    {
+        stage = MusicStage.Climax;
+        climaxStartStep = -1;
+        breakFlowNext = false;
+        _breakFail = false;
+        _breakFlowReady = 0;
+    }
+
+    public void StartGameMusic()
+    {
+        if (!_menuMode || _startGameRequested)
+            return;
+
+        _startGameRequested = true;
+        _waitForGameStartBar = true;
+
+        if (_menuMusicStarted && _menuController != null)
+        {
+            int[] i_timing = _menuController.GetEndTiming();
+
+            _nextLastBeat = i_timing[0];
+            _nextLastBar = i_timing[1];
+            _menuSwitchReady = false;
+        }
+        else
+        {
+            _menuSwitchReady = true;
+        }
+    }
+
+    public void Pause()
+    {
+        if (paused)
+            return;
+
+        paused = true;
+        AudioListener.pause = true;
+    }
+
+    public void Unpause()
+    {
+        if (!paused)
+            return;
+
+        paused = false;
+        AudioListener.pause = false;
+    }
+
+    private void StartMenuMusic(TickInfo i_info)
+    {
+        if (_menuController == null)
+            return;
+
+        _menuController.PlayAudioAt(i_info.nextTickTimer);
+        _menuMusicStarted = true;
+
+        int[] i_timing = _menuController.GetEndTiming();
+
+        _nextLastBeat = i_timing[0];
+        _nextLastBar = i_timing[1];
+    }
+
+    private void SwitchToGame(TickInfo i_info)
+    {
+        _menuMode = false;
+        _menuMusicStarted = false;
+        _menuSwitchReady = false;
+        _startGameRequested = false;
+        _waitForGameStartBar = false;
+
+        if (_menuController != null)
+            _menuController.CancelAudio(true, true);
+
+        GameStart(i_info);
+    }
+
+    private void StopAllGameControllers()
+    {
+        StopControllers(_mainControllers);
+        StopControllers(_intensityControllers);
+        StopControllers(_dangerControllers);
+        StopControllers(_tutorialControllers);
+        StopControllers(_tutorialIntensityControllers);
+
+        if (_tutorialBreakflowController != null)
+            _tutorialBreakflowController.CancelAudio(true, true);
+
+        if (_tutorialIntensityBreakflowController != null)
+            _tutorialIntensityBreakflowController.CancelAudio(true, true);
+    }
+
+    private static void StopControllers(AudioController[] i_controllers)
+    {
+        if (i_controllers == null)
+            return;
+
+        for (int i = 0; i < i_controllers.Length; i++)
+        {
+            if (i_controllers[i] != null)
+                i_controllers[i].CancelAudio(true, true);
+        }
     }
     #endregion
 
@@ -196,18 +334,29 @@ public class Composer : MonoBehaviour
     {
         yield return new WaitForFixedUpdate();
 
-        print("Test");
+        if (_menuMode)
+            yield break;
 
+        //print("Test");
+
+        // Menu
+        if (false)
+        {
+
+        }
+        
         // Tutorial
         if (GameManager.tutorial)
         {
             if (_breakFlowNext)
             {
-                _tutorialBreakflowController.PlayStageAudioNextTick(MusicStage.Final_Anticipation);
-                _tutorialIntensityBreakflowController.PlayStageAudioNextTick(MusicStage.Final_Anticipation);
+                _tutorialBreakflowController.PlayStageAudioNextTick(
+                    MusicStage.Final_Anticipation);
+                _tutorialIntensityBreakflowController.PlayStageAudioNextTick(
+                    MusicStage.Final_Anticipation);
                 _breakFlowNext = false;
                 _breakFlowReady = 17;
-                GameManager.instance.SetBreakFlow(true);
+                StartBreakFlow();
             }
             else if (_breakFlowReady > 0 && !breakFlowNext)
             {
@@ -375,9 +524,9 @@ public class Composer : MonoBehaviour
                     if(GameManager.flow >= 100f)
                     {
                         _breakFlowReady = 17;
-                        SetBreakFlow();
-                        GameManager.instance.SetBreakFlow(true);
+                        StartBreakFlow();
                         stage = MusicStage.Final_Anticipation;
+
                         PlayNextStageAll(i, MusicStage.Final_Anticipation);
                         break;
                     }
@@ -388,13 +537,7 @@ public class Composer : MonoBehaviour
 
                     if (breakFlowNext)
                     {
-                        if (_tutorialBreak)
-                        {
-                            stage = MusicStage.Climax;
-                            PlayNextStageAll(i, MusicStage.Climax);
-                            break;
-                        }
-
+                        climaxStartStep = _nextDecisionStartStep;
                         stage = MusicStage.Climax;
                         PlayNextStageAll(i, MusicStage.Climax);
                         break;
@@ -533,10 +676,21 @@ public class Composer : MonoBehaviour
     /* - - - - -
      * 
      * - - - - - */
-    public void SetBreakFlow()
+    public void StartBreakFlow()
     {
         breakFlowNext = false;
 
+        if (GameManager.instance == null)
+            return;
+
+        GameManager.instance.SetBreakFlow(Mathf.Max(1, _breakFlowReady));
+    }
+
+    /* - - - - -
+     * 
+     * - - - - - */
+    public void ReadyBreakFlow()
+    {
         if (GameManager.tutorial)
         {
             for (int i = 0; i < _tutorialControllers.Length; i++)
@@ -677,62 +831,7 @@ public class Composer : MonoBehaviour
         }
     }
 
-    public void BreakFlow()
-    {
-        if (_breakFlowReady == 1)
-        {
-            breakFlowNext = true;
-            _breakFail = false;
-
-            if (GameManager.tutorial)
-            {
-                _tutorialBreakflowController.CancelAudio(true);
-                _tutorialIntensityBreakflowController.CancelAudio(true);
-
-                PlayNextStageAllAt(0, MusicStage.Climax, TickManager.tickInfo.nextTickTimer);
-                stage = MusicStage.Climax;
-
-                _fixBreak = true;
-            }
-            else
-            {
-                CancelAll(GameManager.cycle - 1, true);
-
-                PlayNextStageAllAt(GameManager.cycle, MusicStage.Climax, TickManager.tickInfo.nextTickTimer);
-                stage = MusicStage.Climax;
-
-                _fixBreak = true;
-            }
-        }
-        else if(_breakFlowReady > 1)
-        {
-            if (GameManager.tutorial)
-            {
-                _tutorialBreak = true;
-                stage = MusicStage.Final_Anticipation;
-            }
-
-            _breakFail = false;
-            breakFlowNext = true;
-        }
-    }
-    #endregion
-
-    #region Timing
-    public void TickListener(TickInfo i_info)
-    {
-        if (i_info.beat == _nextLastBeat && i_info.bar == _nextLastBar)
-        {
-            StartCoroutine(MainBrain());
-        }
-
-        if (_breakFlowReady > 0)
-        {
-            _breakFlowReady--;
-        }
-    }
-
-    public void StartListener(TickInfo i_info)
+    public void GameStart(TickInfo i_info)
     {
         if (GameManager.tutorial)
         {
@@ -760,8 +859,94 @@ public class Composer : MonoBehaviour
         }
         else
         {
-            DebugStart(i_info);
+            if (stage == MusicStage.Climax)
+                climaxStartStep = GetNextTickStep(i_info);
+
+            PlayNextStageAllAt(GameManager.cycle - 1, stage, i_info.nextTickTimer);
+            CalculateNextDecision();
         }
+    }
+
+    public void BreakFlowSuccess()
+    {
+        breakFlowNext = true;
+        _breakFail = false;
+
+        if (GameManager.tutorial)
+        {
+            _tutorialBreakflowController.CancelAudio(true);
+            _tutorialIntensityBreakflowController.CancelAudio(true);
+
+            climaxStartStep = GetNextTickStep(TickManager.tickInfo);
+            PlayNextStageAllAt(0, MusicStage.Climax, TickManager.tickInfo.nextTickTimer);
+            stage = MusicStage.Climax;
+
+            _fixBreak = true;
+        }
+        else
+        {
+            CancelAll(GameManager.cycle - 1, true);
+
+            climaxStartStep = GetNextTickStep(TickManager.tickInfo);
+            PlayNextStageAllAt(GameManager.cycle, MusicStage.Climax, TickManager.tickInfo.nextTickTimer);
+            stage = MusicStage.Climax;
+
+            _fixBreak = true;
+        }
+    }
+
+    private static int GetNextTickStep(TickInfo i_info)
+    {
+        return Mathf.RoundToInt(i_info.beatFullCount * 2f) + 2;
+    }
+    #endregion
+
+    #region Timing
+    public void TickListener(TickInfo i_info)
+    {
+        if (paused)
+            return;
+
+        if (_menuMode)
+        {
+            bool i_atChangePoint =
+                _menuSwitchReady ||
+                (_menuMusicStarted &&
+                 ((_menuController != null && !_menuController.isPlaying) ||
+                  (i_info.beat == _nextLastBeat && i_info.bar == _nextLastBar)));
+
+            if (_startGameRequested && i_atChangePoint)
+            {
+                if (_waitForGameStartBar && i_info.beat != i_info.beatTotal)
+                    return;
+
+                SwitchToGame(i_info);
+            }
+
+            return;
+        }
+
+        if (i_info.beat == _nextLastBeat && i_info.bar == _nextLastBar)
+        {
+            _nextDecisionStartStep = Mathf.RoundToInt(i_info.beatFullCount * 2f) + 2;
+            StartCoroutine(MainBrain());
+        }
+
+        if (_breakFlowReady > 0)
+        {
+            _breakFlowReady--;
+        }
+    }
+
+    public void StartListener(TickInfo i_info)
+    {
+        if (_menuMode)
+        {
+            StartMenuMusic(i_info);
+            return;
+        }
+
+        GameStart(i_info);
     }
     #endregion
 

@@ -15,7 +15,7 @@ public class WaveManager : MonoBehaviour
     {
         public EnemyTypes type;
         public Enemy prefab;
-        [Min(0), Tooltip("Quantos já nascem desativados no início")]
+        [Min(0), Tooltip("Quantos jÃ¡ nascem desativados no inÃ­cio")]
         public int initialCount;
     }
 
@@ -29,8 +29,8 @@ public class WaveManager : MonoBehaviour
     }
     #endregion
 
-    #region Variáveis
-    // VARIÁVEIS VISÍVEIS
+    #region VariÃ¡veis
+    // VARIÃVEIS VISÃVEIS
     [Header("Pool")]
         [SerializeField, Tooltip("Prefab de cada tipo de inimigo que pode spawnar")]
     private EnemyPoolEntry[] _enemyPool = new EnemyPoolEntry[0];
@@ -38,7 +38,7 @@ public class WaveManager : MonoBehaviour
     [Header("Gatilho")]
         [SerializeField, Min(0), Tooltip("Spawna caso tenham a quantia de inimigos chegue neste limiar")]
     private int _waveEnemyLimit = 2;
-        [SerializeField, Min(0), Tooltip("Ticks até spawnar uma wave. 0 = desligado")]
+        [SerializeField, Min(0), Tooltip("Ticks atÃ© spawnar uma wave. 0 = desligado")]
     private int _waveTimeoutTicks = 0;
 
     [Header("Ataque garantido")]
@@ -53,10 +53,10 @@ public class WaveManager : MonoBehaviour
     private int _minAliveEnemies = 2;
         [SerializeField, Min(0), Tooltip("Inimigos quando agressividade de spawn em 1")]
     private int _maxAliveEnemies = 6;
-        [SerializeField, Min(0), Tooltip("Inimigos com essa vida ou menor são ignorados")]
+        [SerializeField, Min(0), Tooltip("Inimigos com essa vida ou menor sÃ£o ignorados")]
     private int _lowHealthThreshold = 25;
 
-    [Header("Espaçamento (half-ticks)")]
+    [Header("EspaÃ§amento (half-ticks)")]
         [SerializeField, Min(1), Tooltip("Half-ticks entre inimigos do mesmo tipo")]
     private int _sameTypeSpacing = 2;
         [SerializeField, Min(1), Tooltip("Half-ticks entre inimigos de tipos diferentes")]
@@ -68,8 +68,8 @@ public class WaveManager : MonoBehaviour
         [SerializeField, Min(0f), Tooltip("Raio do anel de spawn ao redor do jogador")]
     private float _fallbackRingRadius = 10f;
 
-    // VARIÁVEIS OCULTAS
-        // Referências
+    // VARIÃVEIS OCULTAS
+        // ReferÃªncias
     private EnemyManager _enemyManager;
     private PlayerController _player;
 
@@ -82,7 +82,7 @@ public class WaveManager : MonoBehaviour
     private int _ticksSinceWave = 0;
     #endregion
 
-    #region Funções Unity
+    #region FunÃ§Ãµes Unity
     /* - - - - -
      * 
      * - - - - - */
@@ -99,7 +99,7 @@ public class WaveManager : MonoBehaviour
 
             for (int i = 0; i < i_entry.initialCount; i++)
             {
-                Enemy i_enemy = Instantiate(i_entry.prefab);
+                Enemy i_enemy = Instantiate(i_entry.prefab, transform, true);
                 i_enemy.gameObject.SetActive(false);
 
                 AddToPool(i_entry.type, i_enemy);
@@ -115,6 +115,9 @@ public class WaveManager : MonoBehaviour
      * - - - - - */
     private void GenerateWave(int i_currentStep)
     {
+        if (!_waveGeneration)
+            return;
+
         List<EnemyPoolEntry> i_entries = EnabledEntries();
 
         if (i_entries.Count == 0)
@@ -125,7 +128,7 @@ public class WaveManager : MonoBehaviour
             _maxAliveEnemies,
             _enemyManager._spawnAggressiviness));
 
-            // Inimigos necessários
+            // Inimigos necessÃ¡rios
         int i_toSpawn = i_target - CountRelevantEnemies();
 
         if (i_toSpawn <= 0)
@@ -173,7 +176,7 @@ public class WaveManager : MonoBehaviour
 
         i_types.Sort();
 
-            // Agenda com espaçamento em meio beats
+            // Agenda com espaÃ§amento em meio beats
         int i_cursor = 0;
 
         for (int i = 0; i < i_types.Count; i++)
@@ -194,7 +197,7 @@ public class WaveManager : MonoBehaviour
     }
     #endregion
 
-    #region Funções Públicas
+    #region FunÃ§Ãµes PÃºblicas
     /* - - - - -
      * Devolve um inimigo morto ao pool.
      * - - - - - */
@@ -206,12 +209,105 @@ public class WaveManager : MonoBehaviour
         AddToPool(i_enemy.enemyType, i_enemy);
     }
 
+    public void SetWaveGeneration(bool i_enabled)
+    {
+        _waveGeneration = i_enabled;
+
+        if (!i_enabled)
+            ClearSpawnQueue();
+    }
+
+    public void ClearSpawnQueue()
+    {
+        _spawnQueue.Clear();
+        _waveBaseStep = 0;
+        _ticksSinceWave = 0;
+    }
+
+    public Enemy SpawnTutorialEnemy(EnemyTypes i_type, Vector3 i_position, Quaternion i_rotation)
+    {
+        if (_enemyManager == null)
+            _enemyManager = GetComponent<EnemyManager>();
+
+        if (_enemyManager == null)
+            return null;
+
+        Enemy i_enemy = GetFromPool(i_type);
+
+        if (i_enemy == null)
+            i_enemy = InstantiatePrefab(i_type);
+
+        if (i_enemy == null)
+        {
+            foreach (EnemyPoolEntry i_entry in _enemyPool)
+            {
+                if (i_entry.prefab == null)
+                    continue;
+
+                i_enemy = GetFromPool(i_entry.type);
+
+                if (i_enemy == null)
+                    i_enemy = InstantiatePrefab(i_entry.type);
+
+                if (i_enemy != null)
+                    break;
+            }
+        }
+
+        if (i_enemy == null)
+            return null;
+
+        i_enemy.transform.SetPositionAndRotation(i_position, i_rotation);
+        i_enemy.gameObject.SetActive(true);
+        i_enemy.SetWaveManager(this);
+        i_enemy.ResetFromPool();
+        _enemyManager.AddActiveEnemy(i_enemy);
+
+        return i_enemy;
+    }
+
+    public Enemy SpawnTutorialEnemy(GameObject i_prefab, Vector3 i_position, Quaternion i_rotation)
+    {
+        if (i_prefab == null)
+            return SpawnTutorialEnemy(EnemyTypes.Basic, i_position, i_rotation);
+
+        if (_enemyManager == null)
+            _enemyManager = GetComponent<EnemyManager>();
+
+        if (_enemyManager == null)
+            return null;
+
+        Transform i_parent = transform;
+        GameObject i_instance = Instantiate(i_prefab, i_position, i_rotation, i_parent);
+
+        if (i_instance == null)
+            return null;
+
+        Enemy i_enemy = i_instance.GetComponent<Enemy>();
+
+        if (i_enemy == null)
+        {
+            Destroy(i_instance);
+            return null;
+        }
+
+        i_enemy.transform.SetPositionAndRotation(i_position, i_rotation);
+        i_enemy.gameObject.SetActive(true);
+        i_enemy.SetWaveManager(this);
+        i_enemy.ResetFromPool();
+        _enemyManager.AddActiveEnemy(i_enemy);
+
+        return i_enemy;
+    }
+
     /* - - - - -
      * Garante um inimigo vivo do tipo pedido.
-     * Enfileira um spawn imediato caso não exista.
+     * Enfileira um spawn imediato caso nÃ£o exista.
      * - - - - - */
     public bool EnsureAvailability(EnemyTypes i_type)
     {
+        if (!_waveGeneration)
+            return false;
         foreach (Enemy i_enemy in _enemyManager.activeEnemies)
         {
             if (i_enemy != null && i_enemy.enemyType == i_type)
@@ -230,16 +326,16 @@ public class WaveManager : MonoBehaviour
     /* - - - - -
      * Garante inimigos vivos com esse ataque.
      * 
-     * Retorna positivo se já possuir o bastante.
+     * Retorna positivo se jÃ¡ possuir o bastante.
      * Retorna negativo se necessitar de mais.
      * - - - - - */
     public bool EnsureAttackAvailability(AttackType i_attackType)
     {
-        if (i_attackType == null)
+        if (!_waveGeneration || i_attackType == null)
             return false;
 
         int i_target = 1 + _extraAttackEnemies;
-        int i_alive = _enemyManager.CountEnemiesWithAttack(i_attackType);
+        int i_alive = _enemyManager.CountAvailableEnemiesWithAttack(i_attackType);
 
         if (i_alive >= i_target)
             return true;
@@ -358,14 +454,14 @@ public class WaveManager : MonoBehaviour
         foreach (EnemyPoolEntry i_entry in _enemyPool)
         {
             if (i_entry.prefab != null && i_entry.type == i_type)
-                return Instantiate(i_entry.prefab);
+                return Instantiate(i_entry.prefab, transform, true);
         }
 
         return null;
     }
 
     /* - - - - -
-     * Retorna posição válida spawn.
+     * Retorna posiÃ§Ã£o vÃ¡lida spawn.
      * - - - - - */
     private Vector3 GetSpawnPoint()
     {
@@ -385,7 +481,7 @@ public class WaveManager : MonoBehaviour
             i_position = GetFallbackPosition();
         }
 
-            // Aproxima do NavMesh mais próximo
+            // Aproxima do NavMesh mais prÃ³ximo
         if (NavMesh.SamplePosition(i_position, out NavMeshHit i_hit, 5f, NavMesh.AllAreas))
             i_position = i_hit.position;
 
@@ -393,7 +489,7 @@ public class WaveManager : MonoBehaviour
     }
 
     /* - - - - -
-     * Posição ao redor jogador.
+     * PosiÃ§Ã£o ao redor jogador.
      * - - - - - */
     private Vector3 GetFallbackPosition()
     {
@@ -410,7 +506,7 @@ public class WaveManager : MonoBehaviour
 
     #region Contagem
     /* - - - - -
-     * Contagem de inimigos acima da vida mínima viável
+     * Contagem de inimigos acima da vida mÃ­nima viÃ¡vel
      * - - - - - */
     private int CountRelevantEnemies()
     {
@@ -457,7 +553,7 @@ public class WaveManager : MonoBehaviour
     }
 
     /* - - - - -
-     * Espaços do pool livres.
+     * EspaÃ§os do pool livres.
      * - - - - - */
     private List<EnemyPoolEntry> EnabledEntries()
     {
@@ -497,6 +593,12 @@ public class WaveManager : MonoBehaviour
     {
         if (i_info.type == TickType.Start)
             return;
+
+        if (!_waveGeneration)
+        {
+            _spawnQueue.Clear();
+            return;
+        }
 
         int i_step = i_info.beatFullCount * 2;
 

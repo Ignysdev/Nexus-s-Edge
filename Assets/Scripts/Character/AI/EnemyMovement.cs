@@ -56,19 +56,19 @@ public class EnemyMovement : MonoBehaviour
     public Transform targetMove { get; private set; }
     [HideInInspector]
     public bool allowRotation = true;
+
+    public bool IsPaused => _movementPaused;
     
         // Referências
     private NavMeshAgent _agent;
     private Transform _playerTransform;
 
         // Random Point
-    private Vector3[] _possibleMovePositions;
-    private float[] _possibleMoveAngles;
-
     private Collider[] _closeEnemiesArray;
 
     // Idle
     private Coroutine _coroutine;
+    private bool _movementPaused;
     #endregion
 
     #region Funções Unity
@@ -101,6 +101,9 @@ public class EnemyMovement : MonoBehaviour
      * - - - - - */
     private void Update()
     {
+        if (_movementPaused)
+            return;
+
         RotateTowardsPlayer();
 
         if (Vector3.Distance(transform.position, _playerTransform.position) > _maxDistanceToPlayer)
@@ -114,6 +117,9 @@ public class EnemyMovement : MonoBehaviour
      * - - - - - */
     public bool WalkTo(Vector3 i_position, bool i_run = true)
     {
+        if (_movementPaused)
+            return false;
+
         if (i_run)
         {
             _agent.speed = _runSpeed;
@@ -135,6 +141,9 @@ public class EnemyMovement : MonoBehaviour
      * - - - - - */
     public bool WalkToPlayer(float i_distance = 5f, bool i_run = true, bool i_random = false)
     {
+        if (_movementPaused)
+            return false;
+
         Vector3 i_targetPosition;
         if (i_random)
             i_targetPosition = FindNewIdlePoint(false);
@@ -204,7 +213,7 @@ public class EnemyMovement : MonoBehaviour
      * - - - - - */
     public void StartIdleMovement()
     {
-        if (_coroutine != null)
+        if (_movementPaused || _coroutine != null)
             return;
 
         _coroutine = StartCoroutine(MovementIdle());
@@ -221,10 +230,37 @@ public class EnemyMovement : MonoBehaviour
             StopCoroutine(_coroutine);
             _coroutine = null;
         }
-        else
+    }
+
+    public void PauseMovement()
+    {
+        _movementPaused = true;
+        StopIdleMovement();
+
+        if (_agent != null)
         {
-            Debug.LogWarning($"{gameObject.name} is trying to stop it's idle coroutine, but there's none.");
+            _agent.isStopped = true;
+
+            if (_agent.isOnNavMesh)
+                _agent.ResetPath();
         }
+    }
+
+    public void ResumeMovement()
+    {
+        _movementPaused = false;
+
+        if (_agent != null)
+        {
+            _agent.isStopped = false;
+
+            if (_agent.isOnNavMesh)
+                _agent.Warp(transform.position);
+
+            _agent.ResetPath();
+        }
+
+        StartIdleMovement();
     }
 
     /* - - - - -
@@ -234,10 +270,12 @@ public class EnemyMovement : MonoBehaviour
     {
             // A corrotina morreu junto com a desativação do objeto
         _coroutine = null;
+        _movementPaused = false;
 
             // Realinha o agente na nova posição
         if (_agent.isOnNavMesh)
         {
+            _agent.isStopped = false;
             _agent.Warp(transform.position);
             _agent.ResetPath();
         }

@@ -1,3 +1,4 @@
+using DG.Tweening;
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -34,12 +35,18 @@ public class Attack : MonoBehaviour
         // Referências
     private Dash _dash;
     private EnemyMovement _enemyMovement;
+    private CharacterAnimator _animation;
+    private CharacterSfx _sfx;
 
         // Ataque
         [HideInInspector]
     public Coroutine currentAttack { get; private set; }
+        [HideInInspector]
+    public AttackType currentAttackType { get; private set; }
     private bool _hitboxActive;
     public AttackType.Hits _currentHit { get; private set; }
+
+    public bool HasHit => _hitTargets.Count > 0;
 
     private readonly HashSet<GameObject> _hitTargets =
         new HashSet<GameObject>();
@@ -60,6 +67,8 @@ public class Attack : MonoBehaviour
     {
         _dash = GetComponent<Dash>();
         _enemyMovement = GetComponent<EnemyMovement>();
+        _animation = GetComponent<CharacterAnimator>();
+        _sfx = GetComponent<CharacterSfx>();
 
         _attackController = GetComponent<Controller>();
 
@@ -83,7 +92,7 @@ public class Attack : MonoBehaviour
     /* - - - - -
      * Inicia o ataque em direção ao alvo. Retorna verdadeira se possível
      * - - - - - */
-    public bool StartAttack(Vector3 i_target, int i_attackIndex = 0)
+    public bool StartAttack(Vector3 i_target, int i_attackIndex = 0, Transform i_targetTransform = null)
     {
         if (currentAttack != null)
         {
@@ -103,7 +112,14 @@ public class Attack : MonoBehaviour
         if (i_attackIndex < 0)
             i_attackIndex = 0;
 
-        currentAttack = StartCoroutine(RunAttack(attacks[i_attackIndex], i_target));
+        _hitTargets.Clear();
+
+        currentAttackType = attacks[i_attackIndex];
+        currentAttack = StartCoroutine(RunAttack(attacks[i_attackIndex], i_target, i_targetTransform));
+
+        if (_animation != null)
+            _animation.PlayAttack(currentAttackType);
+
         return true;
     }
 
@@ -112,7 +128,7 @@ public class Attack : MonoBehaviour
      * - - - - - */
     public bool StartAttack(int i_attackIndex = 0)
     {
-        return StartAttack(Vector3.zero,i_attackIndex);
+        return StartAttack(Vector3.zero, i_attackIndex);
     }
 
     /* - - - - -
@@ -136,9 +152,10 @@ public class Attack : MonoBehaviour
 
         ChangeHitbox(false);
 
-        DebugChange(2);
+        //DebugChange(2);
 
         currentAttack = null;
+        currentAttackType = null;
     }
 
     public float[] FirstHitTiming(int i_index, bool i_beats = true)
@@ -172,7 +189,7 @@ public class Attack : MonoBehaviour
 
 
     #region Ataque
-    private IEnumerator RunAttack(AttackType i_attack, Vector3 i_target)
+    private IEnumerator RunAttack(AttackType i_attack, Vector3 i_target, Transform i_targetTransform)
     {
         if (i_attack == null)
         {
@@ -189,7 +206,7 @@ public class Attack : MonoBehaviour
 
             // Início Hit
 
-            DebugChange(0);
+            //DebugChange(0);
 
             if (i_currentHit.dashStart > 0)
             {
@@ -198,9 +215,22 @@ public class Attack : MonoBehaviour
 
             // Dash
 
-            Dash(i_currentHit, i_target);
+            if(i_target != Vector3.zero)
+            {
+                Vector3 i_dashTarget = i_targetTransform != null ? i_targetTransform.position : i_target;
 
-            if(_enemyMovement)
+                Vector3 i_lookDirection = i_dashTarget - transform.position;
+                i_lookDirection.y = 0f;
+
+                if (i_lookDirection.sqrMagnitude > 0.0001f)
+                    transform.DORotate(Quaternion.LookRotation(i_lookDirection).eulerAngles, 0.15f);
+
+                Dash(i_currentHit, i_dashTarget);
+            }
+            else
+                Dash(i_currentHit, i_target);
+
+            if (_enemyMovement)
                 _enemyMovement.allowRotation = false;
 
             if (i_currentHit.hitboxStart > 0)
@@ -212,7 +242,7 @@ public class Attack : MonoBehaviour
 
             ChangeHitbox(true, i_currentHit);
 
-            DebugChange(1);
+            //DebugChange(1);
 
 
             if (i_currentHit.hitboxEnd > 0)
@@ -224,7 +254,7 @@ public class Attack : MonoBehaviour
 
             ChangeHitbox(false);
 
-            DebugChange(0);
+            //DebugChange(0);
 
 
             if (i_currentHit.attackEnd > 0)
@@ -232,13 +262,14 @@ public class Attack : MonoBehaviour
                 yield return new WaitForSeconds(i_currentHit.attackEnd);
             }
 
-            DebugChange(2);
+            //DebugChange(2);
 
             if (_enemyMovement)
                 _enemyMovement.allowRotation = true;
         }
 
         currentAttack = null;
+        currentAttackType = null;
     }
 
     #endregion
@@ -269,14 +300,28 @@ public class Attack : MonoBehaviour
             if (i_target != Vector3.zero)
             {
                 float i_targetDistance = Vector3.Distance(i_target, transform.position) - i_currentHit.DashTargetDistance;
+                float i_dashDistance = 0f;
 
                 if (i_targetDistance >= i_currentHit.DashMaxDistance)
                 {
-                    _dash.DashTo(i_currentHit.DashMaxDistance, false, i_dashDuration, false, i_currentHit.DashEase);
+                    i_dashDistance = i_currentHit.DashMaxDistance;
                 }
                 else if (i_targetDistance > i_currentHit.DashTargetDistance)
                 {
-                    _dash.DashTo(i_targetDistance, false, i_dashDuration, false, i_currentHit.DashEase);
+                    i_dashDistance = i_targetDistance;
+                }
+
+                if (i_dashDistance > 0f)
+                {
+                    Vector3 i_direction = i_target - transform.position;
+                    i_direction.y = 0f;
+
+                    if (i_direction.sqrMagnitude > 0.0001f)
+                    {
+                        Vector3 i_dashPosition = transform.position + i_direction.normalized * i_dashDistance;
+
+                        _dash.DashTo(i_dashPosition, false, i_dashDuration, false, i_currentHit.DashEase);
+                    }
                 }
             }
             else
@@ -412,33 +457,66 @@ public class Attack : MonoBehaviour
     {
         GameObject i_target = i_collider.gameObject;
 
-        if (!_hitTargets.Add(i_target))
-            return;
-
         int i_damage = _currentHit.Damage;
 
         if (attackEmpoweredByCombo && GameManager.combo >= 5)
         {
             float i_power = attackEmpoweringRate * GameManager.combo / 5;
-            
-            if(i_power > attackEmpoweringMax)
+
+            if (i_power > attackEmpoweringMax)
                 i_power = attackEmpoweringMax;
 
             i_damage = Mathf.RoundToInt(i_damage * i_power);
-
-            print("aaa");
         }
 
-        if (i_target.TryGetComponent<Status>(out Status i_status))
+        DashTrailHitbox i_trail = i_target.GetComponent<DashTrailHitbox>();
+
+        if (i_trail == null)
+            i_trail = i_target.GetComponentInParent<DashTrailHitbox>();
+
+        if (i_trail != null)
         {
-            Debug.Log($"{gameObject.name} hit {i_target.name} for {i_damage} damage. Life: {i_status.health - i_damage}");
+            if (i_trail.playerStatus == null)
+                return;
 
-            i_status.DealDamage(i_damage, _currentHit.PostureDamage,_currentHit.KnockBackDistance, _currentHit.Heavy);
+            if (_hitTargets.Contains(i_trail.playerStatus.gameObject))
+                return;
+
+            if (!i_trail.TryHit(
+                transform.position,
+                i_damage,
+                _currentHit.PostureDamage,
+                _currentHit.KnockBackDistance,
+                _currentHit.Heavy))
+            {
+                return;
+            }
+
+            _hitTargets.Add(i_trail.playerStatus.gameObject);
+            return;
         }
-        else
+
+        Status i_status = i_target.GetComponent<Status>();
+
+        if (i_status == null)
+            i_status = i_target.GetComponentInParent<Status>();
+
+        if (i_status == null)
+            return;
+
+        if (!_hitTargets.Add(i_status.gameObject))
+            return;
+
+        Debug.Log($"{gameObject.name} hit {i_status.gameObject.name} for {i_damage} damage. Life: {i_status.health - i_damage}");
+
+        if (_sfx != null)
         {
-            //Debug.LogWarning($"${gameObject.name} tried to hit {i_target.name}, but it does not have a Status component.");
+            _sfx.PlayAt(
+                _currentHit.Heavy ? CharacterSfx.HeavyHit : CharacterSfx.LightHit,
+                i_status.transform.position);
         }
+
+        i_status.DealDamage(transform.position, i_damage, _currentHit.PostureDamage,_currentHit.KnockBackDistance, _currentHit.Heavy);
     }
 
     #endregion
