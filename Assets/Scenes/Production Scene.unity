@@ -22285,9 +22285,9 @@ MonoBehaviour:
   _idleFlowIncreaseRate: 0.2
   _idleFlowMaximumRate: 3
   _idleFlowMinimumFlow: 40
-  _enemyHitDamageDefault: 5
-  _enemyHitFlow: 5
-  _enemyHitDamageMax: 10
+  _enemyHitDamageDefault: 10
+  _enemyHitFlow: 12.5
+  _enemyHitDamageMax: 20
   _enemyHitMaxFlow: 20
   _enemyHitExponentialCurve: 0.05
   _enemyBlock: 0.1
