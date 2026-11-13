@@ -11,11 +11,19 @@ public class GameUI : MonoBehaviour
         [SerializeField]
     private Text _flowText;
         [SerializeField]
+    private Text _vitalsText;
+        [SerializeField]
     private Text _cycleText;
         [SerializeField]
     private Text _comboText;
         [SerializeField]
     private Text _breakFlowText;
+
+    [Header("Flow HUD")]
+        [SerializeField]
+    private GameObject _flowHudRoot;
+        [SerializeField]
+    private Text _flowHudText;
 
     [Header("Overlay")]
         [SerializeField]
@@ -65,10 +73,16 @@ public class GameUI : MonoBehaviour
 
     private void Update()
     {
+        UpdateFlowHud();
+
         if (_hudRoot == null || !_hudRoot.activeInHierarchy)
             return;
 
         _flowText.text = $"FLOW  {GameManager.flow:0}";
+
+        if (_vitalsText != null)
+            _vitalsText.text = $"VIDA  {PlayerStatus.playerHealth}    POSTURA  {PlayerStatus.playerPosture}";
+
         _cycleText.text = $"CICLO  {GameManager.cycle}";
         _comboText.text = $"COMBO  {GameManager.combo}";
 
@@ -85,6 +99,29 @@ public class GameUI : MonoBehaviour
             float i_pulse = 0.72f + 0.28f * Mathf.Sin(Time.unscaledTime * 8f);
             _breakFlowText.color = new Color(1f, 0.35f, 0.25f, i_pulse);
         }
+    }
+
+    private void UpdateFlowHud()
+    {
+        if (_flowHudRoot == null)
+            return;
+
+        bool i_show = GameManager.instance != null &&
+                      GameManager.state == GameManager.GameState.Playing;
+
+        if (_flowHudRoot.activeSelf != i_show)
+            _flowHudRoot.SetActive(i_show);
+
+        if (i_show && _flowHudText != null)
+            _flowHudText.text = $"{Mathf.FloorToInt(GameManager.flow)}%";
+    }
+
+    public void ToggleDebugHud()
+    {
+        if (_hudRoot == null)
+            return;
+
+        _hudRoot.SetActive(!_hudRoot.activeSelf);
     }
     #endregion
 

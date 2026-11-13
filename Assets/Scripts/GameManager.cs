@@ -912,6 +912,12 @@ public class GameManager : MonoBehaviour
             SetPaused(false);
     }
 
+    public void ToggleDebugHUD()
+    {
+        if (_ui != null)
+            _ui.ToggleDebugHud();
+    }
+
     private void OnApplicationFocus(bool i_hasFocus)
     {
         if (_pauseOnFocusLoss && !i_hasFocus && state == GameState.Playing)

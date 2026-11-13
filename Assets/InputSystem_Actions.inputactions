@@ -68,6 +68,15 @@
                     "processors": "",
                     "interactions": "",
                     "initialStateCheck": false
+                },
+                {
+                    "name": "Debug1",
+                    "type": "Button",
+                    "id": "7c11f99c-ebff-4c47-98be-5dd090888a12",
+                    "expectedControlType": "",
+                    "processors": "",
+                    "interactions": "",
+                    "initialStateCheck": false
                 }
             ],
             "bindings": [
@@ -431,6 +440,17 @@
                     "processors": "",
                     "groups": "",
                     "action": "Heavy",
+                    "isComposite": false,
+                    "isPartOfComposite": false
+                },
+                {
+                    "name": "",
+                    "id": "dcae426b-d4c5-4c63-80a8-d8c0720d8b87",
+                    "path": "<Keyboard>/f10",
+                    "interactions": "",
+                    "processors": "",
+                    "groups": "",
+                    "action": "Debug1",
                     "isComposite": false,
                     "isPartOfComposite": false
                 }

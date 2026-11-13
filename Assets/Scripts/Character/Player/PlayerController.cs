@@ -1194,9 +1194,9 @@ public class PlayerController : Controller
 
     public void OnDebugInput(InputAction.CallbackContext i_context)
     {
-        if (i_context.started)
+        if (i_context.started && GameManager.instance != null)
         {
-            PlayerTarget();
+            GameManager.instance.ToggleDebugHUD();
         }
     }
 }
