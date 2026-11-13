@@ -98,7 +98,7 @@ static public class GameLocalization
             case GameText.MenuSfxVolume:
                 return i_english ? "SFX VOLUME" : "VOLUME DOS EFEITOS";
             case GameText.MenuSensitivity:
-                return i_english ? "SENSITIVITY" : "SENSIBILIDADE";
+                return i_english ? "MOUSE SENSITIVITY" : "SENSIBILIDADE DO MOUSE";
             case GameText.MenuLanguage:
                 return i_english ? "LANGUAGE" : "IDIOMA";
             case GameText.MenuPortuguese:
@@ -110,8 +110,8 @@ static public class GameLocalization
                 return i_english ? "Initializing..." : "Iniciando...";
             case GameText.TutorialStep1Body:
                 return i_english
-                    ? "You are on the Nexus's Edge. The system won't let you out. You must fight your way out. \n \n Use WASD to move. \n LEFT STICK on controller. \n \n This enemy is your training dummy. Attack him with LEFT MOUSE or X on your controller. "
-                    : "Você está no Nexus's Edge. O sistema não vai te deixar passar. Você irá precisar lutar para sair daqui. \n \n Use WASD para se mover. \n ALAVANCA DIREITA no controle. \n \n Esse inimigo é o seu boneco de treino. Ataque-o com o BOTÃO ESQUERDO ou X no seu controle.";
+                    ? "You are on the Nexus's Edge. The system won't let you out. You must fight your way out. \n \n Use WASD to move. \n LEFT STICK on controller. \n \n This enemy is your training dummy. Attack him with LEFT MOUSE \n or X on your controller. "
+                    : "Você está no Nexus's Edge. O sistema não vai te deixar passar. Você irá precisar lutar para sair daqui. \n \n Use WASD para se mover. \n ALAVANCA DIREITA no controle. \n \n Esse inimigo é o seu boneco de treino. Ataque-o com o BOTÃO ESQUERDO \n ou X no seu controle.";
             case GameText.TutorialStep1Hint:
                 return i_english ? "Hit the enemy to continue." : "Acerte o inimigo para avançar.";
 
@@ -146,8 +146,8 @@ static public class GameLocalization
                 return i_english ? "SYSTEM ERROR!!!" : "ERRO NO SISTEMA!!!";
             case GameText.TutorialStep5Body:
                 return i_english
-                    ? "The agents are coming. Attack them and avoid getting hit to increase you Synchronization Flow. \n \n With full Flow, a random agent will unleash the BreakFlow, a very powerfull attack. You must parry it to move forward.\n \n Do this enough times, and maybe you will escape. \n \n Good luck. I see you on the other side \n - 3r1k"
-                    : "Os agentes estão vindo. Ataque os e evite receber golpes para aumentar o seu Fluxo de Sincronização. \n \n Quando seu Fluxo estiver no máximo, um agente irá realizar o BreakFlow, um ataque muito poderoso. Você deve apará-lo para prosseguir.\n \n Repita isso o bastante e talvez você consiga escapar. \n \n Boa sorte. Eu te vejo do outro lado. \n - 3r1k";
+                    ? "The agents are coming. Attack them and avoid getting hit to increase you Synchronization Flow. It's the value on the top of your screen. \n \n With full Flow, a random agent will unleash the BreakFlow, a very powerfull attack. You must parry it to move forward.\n \n Do this enough times, and maybe you will escape. \n \n Good luck. I see you on the other side \n - 3r1k"
+                    : "Os agentes estão vindo. Ataque os e evite receber golpes para aumentar o seu Fluxo de Sincronização. É o valor no topo da sua tela. \n \n Quando seu Fluxo estiver no máximo, um agente irá realizar o BreakFlow, um ataque muito poderoso. Você deve apará-lo para prosseguir.\n \n Repita isso o bastante e talvez você consiga escapar. \n \n Boa sorte. Eu te vejo do outro lado. \n - 3r1k";
             case GameText.TutorialStep5Hint:
                 return i_english ? "Parry the BreakFlow." : "Apare o BreakFlow.";
 
